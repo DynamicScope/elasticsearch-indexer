@@ -1,9 +1,11 @@
 import java.io.{BufferedReader, InputStream, InputStreamReader}
+import java.net.InetAddress
 
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.{GetObjectRequest, ListObjectsRequest, ObjectListing}
 import org.elasticsearch.client.transport.TransportClient
+import org.elasticsearch.common.transport.InetSocketTransportAddress
 
 import scala.util.control.Breaks._
 
@@ -17,6 +19,7 @@ object Main {
     var objectListing : ObjectListing = new ObjectListing()
 
     val client = TransportClient.builder().build()
+      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("127.0.0.1"), 9300))
 
     do {
       objectListing = s3Client.listObjects(listObjectsRequest)
