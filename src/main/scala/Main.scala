@@ -1,11 +1,10 @@
-import java.io.{InputStreamReader, BufferedReader, InputStream}
+import java.io.{BufferedReader, InputStream, InputStreamReader}
 
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.AmazonS3Client
-import com.amazonaws.services.s3.model.{ObjectListing, S3ObjectSummary, ListObjectsRequest, GetObjectRequest}
-import org.elasticsearch.action.index.IndexResponse
-import org.elasticsearch.common.xcontent.XContentFactory._
-import org.elasticsearch.node.NodeBuilder._
+import com.amazonaws.services.s3.model.{GetObjectRequest, ListObjectsRequest, ObjectListing}
+import org.elasticsearch.client.transport.TransportClient
+
 import scala.util.control.Breaks._
 
 /**
@@ -17,8 +16,7 @@ object Main {
     val listObjectsRequest = new ListObjectsRequest().withBucketName("userhabit-jake-test").withPrefix("2015/11/8/")
     var objectListing : ObjectListing = new ObjectListing()
 
-    val node = nodeBuilder().node()
-    val client = node.client()
+    val client = TransportClient.builder().build()
 
     do {
       objectListing = s3Client.listObjects(listObjectsRequest)
@@ -37,7 +35,7 @@ object Main {
       listObjectsRequest.setMarker(objectListing.getNextMarker)
     } while (objectListing.isTruncated)
 
-    node.close()
+    client.close()
   }
 
   def displayTextInputStream(input : InputStream) : Unit = {
