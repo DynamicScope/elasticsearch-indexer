@@ -4,6 +4,7 @@ import java.net.InetAddress
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.{GetObjectRequest, ListObjectsRequest, ObjectListing}
+import com.amazonaws.util.json.JSONObject
 import org.elasticsearch.client.transport.TransportClient
 import org.elasticsearch.common.transport.InetSocketTransportAddress
 
@@ -29,10 +30,16 @@ object Main {
         val key = objectSummaries.get(i).getKey
         val s3Object = s3Client.getObject(new GetObjectRequest("userhabit-jake-test", key))
 //        displayTextInputStream(s3Object.getObjectContent)
-        val json = scala.io.Source.fromInputStream(s3Object.getObjectContent).mkString
+        val strJson = scala.io.Source.fromInputStream(s3Object.getObjectContent).mkString
+        val json = new JSONObject(strJson)
+        json.remove("appViewActivity")
+        json.remove("viewFlow")
+
         val response = client.prepareIndex("userhabit", "jake", "1")
-          .setSource(json)
+          .setSource(json.toString)
           .get()
+        
+        println(response)
       }
 
       listObjectsRequest.setMarker(objectListing.getNextMarker)
