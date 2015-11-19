@@ -4,7 +4,7 @@ import java.net.InetAddress
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.{GetObjectRequest, ListObjectsRequest, ObjectListing}
-import com.amazonaws.util.json.JSONObject
+import com.amazonaws.util.json.{JSONException, JSONObject}
 import org.elasticsearch.client.transport.TransportClient
 import org.elasticsearch.common.transport.InetSocketTransportAddress
 
@@ -16,7 +16,7 @@ import scala.util.control.Breaks._
 object Main {
   def main (args: Array[String]): Unit = {
     val s3Client = new AmazonS3Client(new ProfileCredentialsProvider())
-    val listObjectsRequest = new ListObjectsRequest().withBucketName("userhabit-jake-test").withPrefix("2015/11/8/")
+    val listObjectsRequest = new ListObjectsRequest().withBucketName("userhabit-jake-test")
     var objectListing : ObjectListing = new ObjectListing()
 
     val client = TransportClient.builder().build()
@@ -29,17 +29,26 @@ object Main {
       for (i <- 0 to objectSummaries.size() - 1) {
         val key = objectSummaries.get(i).getKey
         val s3Object = s3Client.getObject(new GetObjectRequest("userhabit-jake-test", key))
-//        displayTextInputStream(s3Object.getObjectContent)
-        val strJson = scala.io.Source.fromInputStream(s3Object.getObjectContent).mkString
-        val json = new JSONObject(strJson)
-        json.remove("appViewActivity")
-        json.remove("viewFlow")
 
-        val response = client.prepareIndex("userhabit", "jake", "1")
-          .setSource(json.toString)
-          .get()
-        
-        println(response)
+        val reader = new BufferedReader(new InputStreamReader(s3Object.getObjectContent))
+        var line = reader.readLine()
+        while (line != null) {
+          try {
+            // displayTextInputStream(s3Object.getObjectContent)
+            val strJson = scala.io.Source.fromInputStream(s3Object.getObjectContent).mkString
+            val json = new JSONObject(strJson)
+            json.remove("appViewActivity")
+            json.remove("viewFlow")
+
+            val response = client.prepareIndex("userhabit", "raw")
+              .setSource(json.toString)
+              .get()
+            println(response)
+          } catch {
+            case e: JSONException => println(e.getMessage)
+          }
+          line = reader.readLine()
+        }
       }
 
       listObjectsRequest.setMarker(objectListing.getNextMarker)
