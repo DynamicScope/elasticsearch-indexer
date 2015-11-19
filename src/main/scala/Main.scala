@@ -16,7 +16,7 @@ import scala.util.control.Breaks._
 object Main {
   def main (args: Array[String]): Unit = {
     val s3Client = new AmazonS3Client(new ProfileCredentialsProvider())
-    val listObjectsRequest = new ListObjectsRequest().withBucketName("userhabit-jake-test")
+    val listObjectsRequest = new ListObjectsRequest().withBucketName("userhabit-jake-test").withPrefix("2015")
     var objectListing : ObjectListing = new ObjectListing()
 
     val client = TransportClient.builder().build()
