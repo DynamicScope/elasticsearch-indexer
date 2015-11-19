@@ -35,10 +35,11 @@ object Main {
         while (line != null) {
           try {
             // displayTextInputStream(s3Object.getObjectContent)
-            val strJson = scala.io.Source.fromInputStream(s3Object.getObjectContent).mkString
-            val json = new JSONObject(strJson)
+            // val strJson = scala.io.Source.fromInputStream(s3Object.getObjectContent).mkString
+            val json = new JSONObject(line)
             json.remove("appViewActivity")
             json.remove("viewFlow")
+//            println(json.getString("device_id"))
 
             val response = client.prepareIndex("userhabit", "raw")
               .setSource(json.toString)
