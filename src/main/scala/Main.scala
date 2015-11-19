@@ -16,7 +16,7 @@ import scala.util.control.Breaks._
 object Main {
   def main (args: Array[String]): Unit = {
     val s3Client = new AmazonS3Client(new ProfileCredentialsProvider())
-    val listObjectsRequest = new ListObjectsRequest().withBucketName("userhabit-jake-test").withPrefix("2015")
+    val listObjectsRequest = new ListObjectsRequest().withBucketName("userhabit-jake-test")
     var objectListing : ObjectListing = new ObjectListing()
 
     val client = TransportClient.builder().build()
@@ -25,12 +25,14 @@ object Main {
     do {
       objectListing = s3Client.listObjects(listObjectsRequest)
       val objectSummaries = objectListing.getObjectSummaries
+      val newLine = "\n"
       println(objectSummaries.size())
       for (i <- 0 to objectSummaries.size() - 1) {
         val key = objectSummaries.get(i).getKey
         val s3Object = s3Client.getObject(new GetObjectRequest("userhabit-jake-test", key))
 
         val reader = new BufferedReader(new InputStreamReader(s3Object.getObjectContent))
+        var byteOffset = 0
         var line = reader.readLine()
         while (line != null) {
           try {
@@ -39,7 +41,16 @@ object Main {
             val json = new JSONObject(line)
             json.remove("appViewActivity")
             json.remove("viewFlow")
-//            println(json.getString("device_id"))
+
+            val file = new JSONObject()
+            file.put("name", key)
+            file.put("offset", byteOffset)
+            json.put("file", file)
+
+            byteOffset = line.getBytes().length + newLine.getBytes().length
+
+            println(key)
+            println(byteOffset)
 
             val response = client.prepareIndex("userhabit", "raw")
               .setSource(json.toString)
