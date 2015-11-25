@@ -6,6 +6,7 @@ import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.{GetObjectRequest, ListObjectsRequest, ObjectListing}
 import com.amazonaws.util.json.{JSONException, JSONObject}
 import org.elasticsearch.client.transport.TransportClient
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.transport.InetSocketTransportAddress
 import org.joda.time.DateTime
 
@@ -20,7 +21,9 @@ object Main {
     val listObjectsRequest = new ListObjectsRequest().withBucketName("userhabit-jake-test")
     var objectListing : ObjectListing = new ObjectListing()
 
-    val client = TransportClient.builder().build()
+    val settings = Settings.settingsBuilder().put("cluster.name", "uh-elasticsearch").build()
+
+    val client = TransportClient.builder().settings(settings).build()
       .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("172.31.1.101"), 9300))
 
     do {
