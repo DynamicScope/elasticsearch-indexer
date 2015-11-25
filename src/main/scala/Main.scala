@@ -7,6 +7,7 @@ import com.amazonaws.services.s3.model.{GetObjectRequest, ListObjectsRequest, Ob
 import com.amazonaws.util.json.{JSONException, JSONObject}
 import org.elasticsearch.client.transport.TransportClient
 import org.elasticsearch.common.transport.InetSocketTransportAddress
+import org.joda.time.DateTime
 
 import scala.util.control.Breaks._
 
@@ -20,7 +21,7 @@ object Main {
     var objectListing : ObjectListing = new ObjectListing()
 
     val client = TransportClient.builder().build()
-      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("127.0.0.1"), 9300))
+      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("172.31.1.101"), 9300))
 
     do {
       objectListing = s3Client.listObjects(listObjectsRequest)
@@ -33,33 +34,39 @@ object Main {
 
         val reader = new BufferedReader(new InputStreamReader(s3Object.getObjectContent))
         var byteOffset = 0
-        var line = reader.readLine()
-        while (line != null) {
+        var sessionJson = reader.readLine()
+        while (sessionJson != null) {
           try {
             // displayTextInputStream(s3Object.getObjectContent)
             // val strJson = scala.io.Source.fromInputStream(s3Object.getObjectContent).mkString
-            val json = new JSONObject(line)
+            val json = new JSONObject(sessionJson)
             json.remove("appViewActivity")
-            json.remove("viewFlow")
+            // json.remove("viewFlow")
 
-            val file = new JSONObject()
-            file.put("name", key)
-            file.put("offset", byteOffset)
-            json.put("file", file)
+            val appId = json.getInt("appId")
+            val localTime = json.getLong("localTime")
+            val timestamp = new DateTime(localTime)
 
-            byteOffset = line.getBytes().length + newLine.getBytes().length
+            val indexName = s"uh-${appId}-${timestamp.toString("yyyyMMdd")}"
 
-            println(key)
-            println(byteOffset)
+//            val file = new JSONObject()
+//            file.put("name", key)
+//            file.put("offset", byteOffset)
+//            json.put("file", file)
+//
+//            byteOffset = sessionJson.getBytes().length + newLine.getBytes().length
+//
+//            println(key)
+//            println(byteOffset)
 
-            val response = client.prepareIndex("userhabit", "raw")
+            val response = client.prepareIndex(indexName, "raw")
               .setSource(json.toString)
               .get()
             println(response)
           } catch {
             case e: JSONException => println(e.getMessage)
           }
-          line = reader.readLine()
+          sessionJson = reader.readLine()
         }
       }
 
