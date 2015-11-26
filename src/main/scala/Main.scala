@@ -27,6 +27,7 @@ object Main {
 
     val client = TransportClient.builder().settings(settings).build()
       .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("172.31.1.101"), 9300))
+      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("172.31.1.100"), 9300))
 
     do {
       objectListing = s3Client.listObjects(listObjectsRequest)
