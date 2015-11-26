@@ -21,15 +21,10 @@ object Main {
     val listObjectsRequest = new ListObjectsRequest().withBucketName("userhabit-jake-test")
     var objectListing : ObjectListing = new ObjectListing()
 
-    val settings = Settings.settingsBuilder()
-      .put("cluster.name", "uh-elasticsearch")
-      .put("client.transport.sniff", true).build()
-
-    val addr = Array[Byte](172.toByte, 31.toByte, 1.toByte, 101.toByte)
+    val settings = Settings.settingsBuilder().build()
 
     val client = TransportClient.builder().settings(settings).build()
-      //.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("172.31.1.101"), 9300))
-      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByAddress(addr), 9300))
+      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("172.31.1.101"), 9300))
 
     do {
       objectListing = s3Client.listObjects(listObjectsRequest)
