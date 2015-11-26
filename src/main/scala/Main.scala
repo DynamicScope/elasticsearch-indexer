@@ -25,9 +25,11 @@ object Main {
       .put("cluster.name", "uh-elasticsearch")
       .put("client.transport.sniff", true).build()
 
+    val ipaddr = Array[Byte](172.toByte, 31.toByte, 1.toByte, 101.toByte)
+
     val client = TransportClient.builder().settings(settings).build()
       //.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("172.31.1.101"), 9300))
-      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("172.31.1.100"), 9300))
+      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByAddress(ipaddr), 9300))
 
     do {
       objectListing = s3Client.listObjects(listObjectsRequest)
