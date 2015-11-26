@@ -21,8 +21,8 @@ object Main {
     val listObjectsRequest = new ListObjectsRequest().withBucketName("userhabit-jake-test")
     var objectListing : ObjectListing = new ObjectListing()
 
-    // val settings = Settings.settingsBuilder().put("cluster.name", "uh-elasticsearch").build()
     val settings = Settings.settingsBuilder()
+      .put("cluster.name", "uh-elasticsearch")
       .put("client.transport.sniff", true).build()
 
     val client = TransportClient.builder().settings(settings).build()
