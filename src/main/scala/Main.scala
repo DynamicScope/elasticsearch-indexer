@@ -75,7 +75,7 @@ object Main {
             val response = client.prepareIndex(indexName, indexType)
               .setSource(json.toString)
               .get()
-            println(response)
+            //println(response)
           } catch {
             case e: JSONException => println(e.getMessage)
           }
