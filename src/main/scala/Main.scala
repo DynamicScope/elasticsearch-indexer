@@ -56,15 +56,12 @@ object Main {
             val indexName = s"uh-${appId}-${timestamp.toString("yyyyMMdd")}"
             val indexType = "session"
 
-//            val file = new JSONObject()
-//            file.put("name", key)
-//            file.put("offset", byteOffset)
-//            json.put("file", file)
-//
-//            byteOffset = sessionJson.getBytes().length + newLine.getBytes().length
-//
-//            println(key)
-//            println(byteOffset)
+            val file = new JSONObject()
+            file.put("name", key)
+            file.put("offset", byteOffset)
+            json.put("file", file)
+
+            byteOffset = sessionJson.getBytes().length + newLine.getBytes().length
 
             val isIndexExists = client.admin().indices().prepareExists(indexName).execute().actionGet().isExists
             if (!isIndexExists) {
@@ -226,6 +223,17 @@ object Main {
       .endObject()
       .startObject("viewFlow")
       .field("enabled", "false")
+      .endObject()
+      .startObject("file")
+      .startObject("properties")
+      .startObject("name")
+        .field("type", "string")
+        .field("index", "not_analyzed")
+      .endObject()
+      .startObject("offset")
+        .field("type", "long")
+      .endObject()
+      .endObject()
       .endObject()
       .endObject()
       .endObject()
