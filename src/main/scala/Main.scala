@@ -5,6 +5,8 @@ import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.{GetObjectRequest, ListObjectsRequest, ObjectListing}
 import com.amazonaws.util.json.{JSONException, JSONObject}
+import com.couchbase.client.java.CouchbaseCluster
+import com.couchbase.client.java.view.{ViewRow, ViewQuery}
 import org.elasticsearch.client.transport.TransportClient
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.transport.InetSocketTransportAddress
@@ -18,6 +20,26 @@ import scala.util.control.Breaks._
   */
 object Main {
   def main (args: Array[String]): Unit = {
+   couchbase()
+  }
+
+  def couchbase() : Unit = {
+    val cluster = CouchbaseCluster.create()
+
+    val bucket = cluster.openBucket("userhabit")
+
+    val result = bucket.query(ViewQuery.from("admin", "daily_session_count").limit(10))
+
+    for (row : ViewRow <- result) {
+      val doc = row.document()
+
+      println(doc.id())
+    }
+
+    cluster.disconnect()
+  }
+
+  def elasticSearch() : Unit = {
     val s3Client = new AmazonS3Client(new ProfileCredentialsProvider())
     val listObjectsRequest = new ListObjectsRequest().withBucketName("userhabit-jake-test")
     var objectListing : ObjectListing = new ObjectListing()
