@@ -24,9 +24,8 @@ object Main {
   }
 
   def couchbase() : Unit = {
-    val cluster = CouchbaseCluster.create()
-
-    val bucket = cluster.openBucket("userhabit")
+    val cluster = CouchbaseCluster.create("172.31.15.189", "172.31.15.190", "172.31.15.191")
+    val bucket = cluster.openBucket("userhabit", "6etx[9nHC^874n")
 
     val result = bucket.query(ViewQuery.from("admin", "daily_session_count").limit(10))
 
