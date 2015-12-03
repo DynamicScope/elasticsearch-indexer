@@ -14,6 +14,7 @@ import org.elasticsearch.common.xcontent.{XContentBuilder, XContentType, XConten
 import org.joda.time.DateTime
 
 import scala.util.control.Breaks._
+import scala.collection.JavaConversions._
 
 /**
   * Created by DynamicScope on 2015. 11. 18..
