@@ -2,7 +2,6 @@ import java.io._
 import java.net.InetAddress
 import java.text.SimpleDateFormat
 import java.util
-import java.util.logging.Logger
 
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.AmazonS3Client
@@ -34,13 +33,19 @@ object Main {
   var couchbaseBucket : Bucket = null
   var couchbaseBucketName = ""
   var couchbaseBucketPassword = ""
+  var fromDateTime : IndexedSeq[Integer] = IndexedSeq.empty
+  var toDateTime : IndexedSeq[Integer] = IndexedSeq.empty
 
   def main (args: Array[String]): Unit = {
-    loadConfig()
-
-    println(couchbaseBucketName)
-    println(couchbaseNodes)
-    println(couchbaseBucketPassword)
+    try {
+      loadConfig()
+    } catch {
+      case e: Exception =>
+        println("----------------------------------------")
+        println(e.getMessage)
+        println("----------------------------------------")
+        return
+    }
 
     openCouchbase()
     couchbaseToS3()
@@ -62,17 +67,31 @@ object Main {
     try {
       val input = new FileInputStream(file)
       val data = yaml.load(input).asInstanceOf[util.LinkedHashMap[String, Object]]
-      appList = data.getOrDefault("app_ids", new util.ArrayList[Integer]()).asInstanceOf[util.ArrayList[Integer]]
+
+      appList = data.getOrDefault("app-ids", new util.ArrayList[Integer]()).asInstanceOf[util.ArrayList[Integer]]
+
+      var tmp : Object = null
+      tmp = data.get("from-datetime")
+      if (tmp == null) throw new Exception("from-datetime option is required.")
+      fromDateTime = tmp.asInstanceOf[util.List[Integer]].toIndexedSeq
+      if (fromDateTime.length != 5) throw new Exception("from-datetime must be [year, month, day, hour, minute]")
+
+      tmp = null
+      tmp = data.get("to-datetime")
+      if (tmp == null) throw new Exception("to-datetime option is required.")
+      toDateTime = tmp.asInstanceOf[util.List[Integer]].toIndexedSeq
+      if (toDateTime.length != 5) throw new Exception("to-datetime must be [year, month, day, hour, minute]")
 
       val couchbase = data.get("couchbase").asInstanceOf[util.LinkedHashMap[String, Object]]
       if (couchbase != null) {
         couchbaseNodes = couchbase.get("nodes").asInstanceOf[util.List[String]]
+
         val bucket = couchbase.get("bucket").asInstanceOf[util.LinkedHashMap[String, Object]]
         couchbaseBucketName = bucket.get("name").asInstanceOf[String]
         couchbaseBucketPassword = bucket.get("password").asInstanceOf[String]
-      }
+      } else throw new Exception("couchbase option is required.")
     } catch {
-      case e: FileNotFoundException => println(s"${file.getCanonicalPath} : was not found.")
+      case e: FileNotFoundException => throw new Exception(s"${file.getCanonicalPath} : was not found.")
     }
   }
 
@@ -89,8 +108,8 @@ object Main {
   }
 
   def couchbaseToS3() : Unit = {
-    var fromDateTime = new DateTime(2015, 1, 1, 0, 0)
-    val toDateTime = new DateTime(2015, 11, 1, 0, 0)
+    var fDateTime = new DateTime(fromDateTime(0), fromDateTime(1), fromDateTime(2), fromDateTime(3), fromDateTime(4))
+    val tDateTime = new DateTime(toDateTime(0), toDateTime(1), toDateTime(2), toDateTime(3), toDateTime(4))
 
     val s3Client = new AmazonS3Client(new ProfileCredentialsProvider())
 
@@ -113,13 +132,13 @@ object Main {
           val fromDateViewRow = fromDateResponseItrRows.next()
           if (fromDateViewRow != null) {
             val fromDateMillis = fromDateViewRow.key().asInstanceOf[JsonArray].get(1).toString.toLong
-            fromDateTime = new DateTime(fromDateMillis).withHourOfDay(0).withMinuteOfHour(0)
+            fDateTime = new DateTime(fromDateMillis).withHourOfDay(0).withMinuteOfHour(0)
           }
 
-          println(s"----------${fromDateTime}----------")
-          var eDate = toDateTime
+          println(s"fromDateTime: $fDateTime")
+          var eDate = tDateTime
 
-          while (eDate.getMillis > fromDateTime.getMillis) {
+          while (eDate.getMillis > fDateTime.getMillis) {
             val sDate = eDate.minusHours(1)
 
             val startKey = JsonArray.fromJson(s"[$intAppId,${sDate.getMillis}]")
@@ -164,7 +183,7 @@ object Main {
 
                 val key = s"$intAppId/$year/$month/$day/$hour"
                 val putResult = s3Client.putObject(new PutObjectRequest("userhabit-jake-test", key, file))
-                println(putResult.getMetadata)
+                println(putResult.getMetadata.get)
 
                 // Remove file when S3 upload succeeds
                 file.delete()
