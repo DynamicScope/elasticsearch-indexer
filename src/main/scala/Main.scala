@@ -90,7 +90,7 @@ object Main {
 
   def couchbaseToS3() : Unit = {
     var fromDateTime = new DateTime(2015, 1, 1, 0, 0)
-    val toDateTime = new DateTime(2015, 10, 18, 0, 0)
+    val toDateTime = new DateTime(2015, 11, 1, 0, 0)
 
     val s3Client = new AmazonS3Client(new ProfileCredentialsProvider())
 
