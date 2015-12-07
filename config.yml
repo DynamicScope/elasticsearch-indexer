@@ -1,0 +1,7 @@
+couchbase:
+  nodes:
+    - "127.0.0.1"
+  bucket:
+    name: "userhabit"
+    password: "a1231618"
+app_ids: [5,7]
