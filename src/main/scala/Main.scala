@@ -116,6 +116,7 @@ object Main {
             fromDateTime = new DateTime(fromDateMillis).withHourOfDay(0).withMinuteOfHour(0)
           }
 
+          println(s"----------${fromDateTime}----------")
           var eDate = toDateTime
 
           while (eDate.getMillis > fromDateTime.getMillis) {
