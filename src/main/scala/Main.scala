@@ -183,7 +183,7 @@ object Main {
 
                 val key = s"$intAppId/$year/$month/$day/$hour"
                 val putResult = s3Client.putObject(new PutObjectRequest("userhabit-jake-test", key, file))
-                println(putResult.getMetadata.get)
+                println(putResult.getETag)
 
                 // Remove file when S3 upload succeeds
                 file.delete()
