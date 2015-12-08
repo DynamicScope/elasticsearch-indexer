@@ -30,7 +30,7 @@ object Main {
   var couchbaseBucket : Bucket = null
   var couchbaseBucketName = ""
   var couchbaseBucketPassword = ""
-  var couchbaseBulkLimit : Int = 0
+  var couchbaseBulkLimit : Integer = 0
   var fromDateTime : IndexedSeq[Integer] = IndexedSeq.empty
   var toDateTime : IndexedSeq[Integer] = IndexedSeq.empty
 
@@ -88,7 +88,7 @@ object Main {
         couchbaseBucketName = bucket.get("name").asInstanceOf[String]
         couchbaseBucketPassword = bucket.get("password").asInstanceOf[String]
 
-        couchbaseBulkLimit = couchbase.getOrDefault("bulk-limit", 500.toInt).asInstanceOf[Int]
+        couchbaseBulkLimit = couchbase.getOrDefault("bulk-limit", 500.asInstanceOf[Integer]).asInstanceOf[Integer]
       } else throw new Exception("couchbase option is required.")
     } catch {
       case e: FileNotFoundException => throw new Exception(s"${file.getCanonicalPath} : was not found.")
