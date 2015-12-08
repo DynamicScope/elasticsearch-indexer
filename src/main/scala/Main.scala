@@ -1,6 +1,7 @@
 import java.io._
 import java.net.InetAddress
 import java.util
+import java.util.concurrent.TimeoutException
 
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.AmazonS3Client
@@ -33,6 +34,7 @@ object Main {
   var couchbaseBulkLimit : Integer = 0
   var fromDateTime : IndexedSeq[Integer] = IndexedSeq.empty
   var toDateTime : IndexedSeq[Integer] = IndexedSeq.empty
+  var logger : BufferedWriter = null
 
   def main (args: Array[String]): Unit = {
     try {
@@ -45,9 +47,19 @@ object Main {
         return
     }
 
+    val dir = new File(s"./log")
+    if (!dir.exists && !dir.isDirectory) {
+      dir.mkdirs()
+    }
+
+    val file = new File(s"${dir.getCanonicalPath}/logging")
+    logger = new BufferedWriter(new FileWriter(file))
+
     openCouchbase()
     couchbaseToS3()
     closeCouchbase()
+
+    logger.close()
   }
 
   def openCouchbase() : Unit = {
@@ -181,8 +193,8 @@ object Main {
       val result = couchbaseBucket.query(ViewQuery.from("admin", "daily_session_count").startKey(startKey).endKey(endKey).reduce(false).skip(skip).limit(limit))
       if (result.success()) {
         result.foreach(row => {
-          val sessionJson = row.document().content()
           try {
+            val sessionJson = row.document().content()
             val json = new JSONObject(sessionJson)
             json.remove("appViewActivity")
             json.remove("location")
@@ -203,6 +215,9 @@ object Main {
             println(response)
           } catch {
             case e: JSONException => println(e.getMessage)
+            case e: TimeoutException =>
+              logger.write(row.id())
+              logger.newLine()
           }
         })
       }
