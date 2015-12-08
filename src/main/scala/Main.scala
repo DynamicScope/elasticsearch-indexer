@@ -30,6 +30,7 @@ object Main {
   var couchbaseBucket : Bucket = null
   var couchbaseBucketName = ""
   var couchbaseBucketPassword = ""
+  var couchbaseBulkLimit : Int = 0
   var fromDateTime : IndexedSeq[Integer] = IndexedSeq.empty
   var toDateTime : IndexedSeq[Integer] = IndexedSeq.empty
 
@@ -86,6 +87,8 @@ object Main {
         val bucket = couchbase.get("bucket").asInstanceOf[util.LinkedHashMap[String, Object]]
         couchbaseBucketName = bucket.get("name").asInstanceOf[String]
         couchbaseBucketPassword = bucket.get("password").asInstanceOf[String]
+
+        couchbaseBulkLimit = couchbase.getOrDefault("bulk-limit", 500).asInstanceOf[Int]
       } else throw new Exception("couchbase option is required.")
     } catch {
       case e: FileNotFoundException => throw new Exception(s"${file.getCanonicalPath} : was not found.")
@@ -167,7 +170,7 @@ object Main {
   }
 
   def toElasticSearch(client: TransportClient, intAppId: Integer, sDate: DateTime, startKey: JsonArray, endKey: JsonArray, totalSessions: Int): Unit = {
-    val limit = 500
+    val limit = couchbaseBulkLimit
     var skip = 0
 
     val year = sDate.toString("yyyy")
