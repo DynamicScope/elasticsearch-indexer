@@ -88,7 +88,7 @@ object Main {
         couchbaseBucketName = bucket.get("name").asInstanceOf[String]
         couchbaseBucketPassword = bucket.get("password").asInstanceOf[String]
 
-        couchbaseBulkLimit = couchbase.getOrDefault("bulk-limit", 500).asInstanceOf[Int]
+        couchbaseBulkLimit = couchbase.getOrDefault("bulk-limit", 500.toInt).asInstanceOf[Int]
       } else throw new Exception("couchbase option is required.")
     } catch {
       case e: FileNotFoundException => throw new Exception(s"${file.getCanonicalPath} : was not found.")
