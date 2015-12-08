@@ -1,16 +1,14 @@
 import java.io._
 import java.net.InetAddress
-import java.text.SimpleDateFormat
 import java.util
 
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.AmazonS3Client
-import com.amazonaws.services.s3.model.{PutObjectRequest, GetObjectRequest, ListObjectsRequest, ObjectListing}
+import com.amazonaws.services.s3.model.{GetObjectRequest, ListObjectsRequest, ObjectListing, PutObjectRequest}
 import com.amazonaws.util.json.{JSONException, JSONObject}
-import com.couchbase.client.java.{Bucket, CouchbaseCluster}
-import com.couchbase.client.java.document.JsonDocument
 import com.couchbase.client.java.document.json.JsonArray
 import com.couchbase.client.java.view.ViewQuery
+import com.couchbase.client.java.{Bucket, CouchbaseCluster}
 import org.elasticsearch.client.transport.TransportClient
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.transport.InetSocketTransportAddress
@@ -18,9 +16,8 @@ import org.elasticsearch.common.xcontent.{XContentBuilder, XContentFactory, XCon
 import org.joda.time.DateTime
 import org.yaml.snakeyaml.Yaml
 
-import scala.collection.mutable
-import scala.util.control.Breaks._
 import scala.collection.JavaConversions._
+import scala.util.control.Breaks._
 
 /**
   * Created by DynamicScope on 2015. 11. 18..
@@ -113,6 +110,10 @@ object Main {
 
     val s3Client = new AmazonS3Client(new ProfileCredentialsProvider())
 
+    val esSettings = Settings.settingsBuilder().build()
+    val esClient = TransportClient.builder().settings(esSettings).build()
+      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("172.31.1.101"), 9300))
+
     if (appList.isEmpty) {
       appList = getAppListFromCouchbase
     }
@@ -148,123 +149,171 @@ object Main {
             if (totalSessionsResult.success()) {
               var totalSessions = 0
               totalSessionsResult.foreach(r => {
-                totalSessions = r.value().toString.toInt
+                if (totalSessions == 0) totalSessions = r.value().toString.toInt
               })
 
               if (totalSessions > 0) {
-                val limit = 500
-                var skip = 0
-                val year = sDate.toString("yyyy")
-                val month = sDate.toString("MM")
-                val day = sDate.toString("dd")
-                val hour = sDate.toString("HH")
-
-                val dir = new File(s"./tmp/$intAppId/$year/$month/$day")
-                if (!dir.exists && !dir.isDirectory) {
-                  dir.mkdirs()
-                }
-
-                val file = new File(s"${dir.getCanonicalPath}/$hour")
-                val bw = new BufferedWriter(new FileWriter(file))
-
-                while (skip < totalSessions) {
-                  val result = couchbaseBucket.query(ViewQuery.from("admin", "daily_session_count").startKey(startKey).endKey(endKey).reduce(false).skip(skip).limit(limit))
-                  if (result.success()) {
-                    result.foreach(row => {
-                      val doc = row.document().content()
-                      bw.write(doc.toString)
-                      bw.newLine()
-                    })
-                  }
-                  skip += limit
-                }
-
-                bw.close()
-
-                val key = s"$intAppId/$year/$month/$day/$hour"
-                val putResult = s3Client.putObject(new PutObjectRequest("userhabit-jake-test", key, file))
-                println(putResult.getETag)
-
-                // Remove file when S3 upload succeeds
-                file.delete()
+                //toS3(s3Client, intAppId, sDate, startKey, endKey, totalSessions)
+                toElasticSearch(esClient, intAppId, sDate, startKey, endKey, totalSessions)
               }
             }
-
             eDate = sDate
           }
         }
       }
     })
+
+    esClient.close()
   }
 
-  //  def elasticSearch() : Unit = {
-  //    val s3Client = new AmazonS3Client(new ProfileCredentialsProvider())
-  //    val listObjectsRequest = new ListObjectsRequest().withBucketName("userhabit-jake-test")
-  //    var objectListing : ObjectListing = new ObjectListing()
-  //
-  //    val settings = Settings.settingsBuilder().build()
-  //
-  //    val client = TransportClient.builder().settings(settings).build()
-  //      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("172.31.1.101"), 9300))
-  //
-  //    do {
-  //      objectListing = s3Client.listObjects(listObjectsRequest)
-  //      val objectSummaries = objectListing.getObjectSummaries
-  //      val newLine = "\n"
-  //      println(objectSummaries.size())
-  //      for (i <- 0 to objectSummaries.size() - 1) {
-  //        val key = objectSummaries.get(i).getKey
-  //        val s3Object = s3Client.getObject(new GetObjectRequest("userhabit-jake-test", key))
-  //
-  //        val reader = new BufferedReader(new InputStreamReader(s3Object.getObjectContent))
-  //        var byteOffset = 0
-  //        var sessionJson = reader.readLine()
-  //        while (sessionJson != null) {
-  //          try {
-  //            // displayTextInputStream(s3Object.getObjectContent)
-  //            // val strJson = scala.io.Source.fromInputStream(s3Object.getObjectContent).mkString
-  //            val json = new JSONObject(sessionJson)
-  //            json.remove("appViewActivity")
-  //            json.remove("location")
-  //            json.remove("phoneNumber")
-  //            // json.remove("viewFlow")
-  //
-  //            val appId = json.getInt("appId")
-  //            val localTime = json.getLong("localTime")
-  //            val timestamp = new DateTime(localTime)
-  //
-  //            val indexName = s"uh-${appId}-${timestamp.toString("yyyyMMdd")}"
-  //            val indexType = "session"
-  //
-  //            val file = new JSONObject()
-  //            file.put("name", key)
-  //            file.put("offset", byteOffset)
-  //            json.put("file", file)
-  //
-  //            byteOffset = sessionJson.getBytes().length + newLine.getBytes().length
-  //
-  //            val isIndexExists = client.admin().indices().prepareExists(indexName).execute().actionGet().isExists
-  //            if (!isIndexExists) {
-  //              val res = client.admin().indices().prepareCreate(indexName).addMapping(indexType, getMapping(indexType)).execute().actionGet()
-  //              println(res.toString)
-  //            }
-  //
-  //            val response = client.prepareIndex(indexName, indexType)
-  //              .setSource(json.toString)
-  //              .get()
-  //            //println(response)
-  //          } catch {
-  //            case e: JSONException => println(e.getMessage)
-  //          }
-  //          sessionJson = reader.readLine()
-  //        }
-  //      }
-  //
-  //      listObjectsRequest.setMarker(objectListing.getNextMarker)
-  //    } while (objectListing.isTruncated)
-  //
-  //    client.close()
-  //  }
+  def toElasticSearch(client: TransportClient, intAppId: Integer, sDate: DateTime, startKey: JsonArray, endKey: JsonArray, totalSessions: Int): Unit = {
+    val limit = 500
+    var skip = 0
+
+    val year = sDate.toString("yyyy")
+    val month = sDate.toString("MM")
+    val day = sDate.toString("dd")
+
+    while (skip < totalSessions) {
+      val result = couchbaseBucket.query(ViewQuery.from("admin", "daily_session_count").startKey(startKey).endKey(endKey).reduce(false).skip(skip).limit(limit))
+      if (result.success()) {
+        result.foreach(row => {
+          val sessionJson = row.document().content()
+          try {
+            val json = new JSONObject(sessionJson)
+            json.remove("appViewActivity")
+            json.remove("location")
+            json.remove("phoneNumber")
+
+            val indexName = s"uh-$intAppId-$year$month$day"
+            val indexType = "session"
+
+            val isIndexExists = client.admin().indices().prepareExists(indexName).execute().actionGet().isExists
+            if (!isIndexExists) {
+              val res = client.admin().indices().prepareCreate(indexName).addMapping(indexType, getMapping(indexType)).execute().actionGet()
+              println(res.toString)
+            }
+
+            val response = client.prepareIndex(indexName, indexType)
+              .setSource(json.toString)
+              .get()
+            println(response)
+          } catch {
+            case e: JSONException => println(e.getMessage)
+          }
+        })
+      }
+      skip += limit
+    }
+  }
+
+  def toS3(s3Client: AmazonS3Client, intAppId: Integer, sDate: DateTime, startKey: JsonArray, endKey: JsonArray, totalSessions: Int): Boolean = {
+    val limit = 500
+    var skip = 0
+
+    val year = sDate.toString("yyyy")
+    val month = sDate.toString("MM")
+    val day = sDate.toString("dd")
+    val hour = sDate.toString("HH")
+
+    val dir = new File(s"./tmp/$intAppId/$year/$month/$day")
+    if (!dir.exists && !dir.isDirectory) {
+      dir.mkdirs()
+    }
+
+    val file = new File(s"${dir.getCanonicalPath}/$hour")
+    val bw = new BufferedWriter(new FileWriter(file))
+
+    while (skip < totalSessions) {
+      val result = couchbaseBucket.query(ViewQuery.from("admin", "daily_session_count").startKey(startKey).endKey(endKey).reduce(false).skip(skip).limit(limit))
+      if (result.success()) {
+        result.foreach(row => {
+          val doc = row.document().content()
+          bw.write(doc.toString)
+          bw.newLine()
+        })
+      }
+      skip += limit
+    }
+
+    bw.close()
+
+    val key = s"$intAppId/$year/$month/$day/$hour"
+    val putResult = s3Client.putObject(new PutObjectRequest("userhabit-jake-test", key, file))
+    println(putResult.getETag)
+
+    // Remove file when S3 upload succeeds
+    file.delete()
+  }
+
+  def elasticSearch() : Unit = {
+    val s3Client = new AmazonS3Client(new ProfileCredentialsProvider())
+    val listObjectsRequest = new ListObjectsRequest().withBucketName("userhabit-jake-test")
+    var objectListing : ObjectListing = new ObjectListing()
+
+    val settings = Settings.settingsBuilder().build()
+
+    val client = TransportClient.builder().settings(settings).build()
+      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("172.31.1.101"), 9300))
+
+    do {
+      objectListing = s3Client.listObjects(listObjectsRequest)
+      val objectSummaries = objectListing.getObjectSummaries
+      val newLine = "\n"
+      println(objectSummaries.size())
+      for (i <- 0 to objectSummaries.size() - 1) {
+        val key = objectSummaries.get(i).getKey
+        val s3Object = s3Client.getObject(new GetObjectRequest("userhabit-jake-test", key))
+
+        val reader = new BufferedReader(new InputStreamReader(s3Object.getObjectContent))
+        var byteOffset = 0
+        var sessionJson = reader.readLine()
+        while (sessionJson != null) {
+          try {
+            // displayTextInputStream(s3Object.getObjectContent)
+            // val strJson = scala.io.Source.fromInputStream(s3Object.getObjectContent).mkString
+            val json = new JSONObject(sessionJson)
+            json.remove("appViewActivity")
+            json.remove("location")
+            json.remove("phoneNumber")
+            // json.remove("viewFlow")
+
+            val appId = json.getInt("appId")
+            val localTime = json.getLong("localTime")
+            val timestamp = new DateTime(localTime)
+
+            val indexName = s"uh-$appId-${timestamp.toString("yyyyMMdd")}"
+            val indexType = "session"
+
+            val file = new JSONObject()
+            file.put("name", key)
+            file.put("offset", byteOffset)
+            json.put("file", file)
+
+            byteOffset = sessionJson.getBytes().length + newLine.getBytes().length
+
+            val isIndexExists = client.admin().indices().prepareExists(indexName).execute().actionGet().isExists
+            if (!isIndexExists) {
+              val res = client.admin().indices().prepareCreate(indexName).addMapping(indexType, getMapping(indexType)).execute().actionGet()
+              println(res.toString)
+            }
+
+            val response = client.prepareIndex(indexName, indexType)
+              .setSource(json.toString)
+              .get()
+            println(response)
+          } catch {
+            case e: JSONException => println(e.getMessage)
+          }
+          sessionJson = reader.readLine()
+        }
+      }
+
+      listObjectsRequest.setMarker(objectListing.getNextMarker)
+    } while (objectListing.isTruncated)
+
+    client.close()
+  }
 
   def getMapping(indexType : String) : XContentBuilder = {
     XContentFactory.contentBuilder(XContentType.JSON)
