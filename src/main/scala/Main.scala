@@ -1,7 +1,7 @@
 import java.io._
 import java.net.InetAddress
 import java.util
-import java.util.concurrent.TimeoutException
+import java.util.concurrent.{TimeUnit, TimeoutException}
 
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.AmazonS3Client
@@ -56,7 +56,7 @@ object Main {
     logger = new BufferedWriter(new FileWriter(file))
 
     openCouchbase()
-    couchbaseToS3()
+    couchbaseToFile()
     closeCouchbase()
 
     logger.close()
@@ -169,7 +169,7 @@ object Main {
 
               if (totalSessions > 0) {
                 //toS3(s3Client, intAppId, sDate, startKey, endKey, totalSessions)
-                toElasticSearch(esClient, intAppId, sDate, startKey, endKey, totalSessions)
+                migrateToElasticSearch(esClient, intAppId, sDate, startKey, endKey, totalSessions)
               }
             }
             eDate = sDate
@@ -181,7 +181,7 @@ object Main {
     esClient.close()
   }
 
-  def toElasticSearch(client: TransportClient, intAppId: Integer, sDate: DateTime, startKey: JsonArray, endKey: JsonArray, totalSessions: Int): Unit = {
+  def migrateToElasticSearch(client: TransportClient, intAppId: Integer, sDate: DateTime, startKey: JsonArray, endKey: JsonArray, totalSessions: Int): Unit = {
     val limit = couchbaseBulkLimit
     var skip = 0
 
@@ -225,8 +225,8 @@ object Main {
     }
   }
 
-  def toS3(s3Client: AmazonS3Client, intAppId: Integer, sDate: DateTime, startKey: JsonArray, endKey: JsonArray, totalSessions: Int): Boolean = {
-    val limit = 500
+  def migrateToS3(s3Client: AmazonS3Client, intAppId: Integer, sDate: DateTime, startKey: JsonArray, endKey: JsonArray, totalSessions: Int): Boolean = {
+    val limit = couchbaseBulkLimit
     var skip = 0
 
     val year = sDate.toString("yyyy")
@@ -264,7 +264,90 @@ object Main {
     file.delete()
   }
 
-  def elasticSearch() : Unit = {
+  def couchbaseToFile(): Unit = {
+
+    var fDateTime = new DateTime(fromDateTime(0), fromDateTime(1), fromDateTime(2), fromDateTime(3), fromDateTime(4))
+    val tDateTime = new DateTime(toDateTime(0), toDateTime(1), toDateTime(2), toDateTime(3), toDateTime(4))
+
+    if (appList.isEmpty) {
+      appList = getAppListFromCouchbase
+    }
+
+    appList.foreach(intAppId => {
+
+      println(s"----------${intAppId.toString}----------")
+
+      val fromDateResponse = couchbaseBucket.query(ViewQuery.from("admin", "daily_session_count")
+        .startKey(JsonArray.fromJson(s"[$intAppId]"))
+        .endKey(JsonArray.fromJson(s"[${intAppId+1}]"))
+        .reduce(false))
+      val fromDateResponseItrRows = fromDateResponse.rows()
+
+      if (fromDateResponse.success()) {
+        if (fromDateResponseItrRows.hasNext) {
+          val fromDateViewRow = fromDateResponseItrRows.next()
+          if (fromDateViewRow != null) {
+            val fromDateMillis = fromDateViewRow.key().asInstanceOf[JsonArray].get(1).toString.toLong
+            fDateTime = new DateTime(fromDateMillis).withHourOfDay(0).withMinuteOfHour(0)
+          }
+
+          fDateTime = fDateTime.withDayOfMonth(1)
+
+          println(s"fromDateTime: $fDateTime")
+          var eDate = tDateTime
+
+          while (eDate.getMillis > fDateTime.getMillis) {
+            val sDate = eDate.withDayOfMonth(1)
+
+            val startKey = JsonArray.fromJson(s"[$intAppId,${sDate.getMillis}]")
+            val endKey = JsonArray.fromJson(s"[$intAppId,${sDate.dayOfMonth().withMaximumValue().getMillis}]")
+
+            val totalSessionsResult = couchbaseBucket.query(ViewQuery.from("admin", "daily_session_count").startKey(startKey).endKey(endKey).reduce(true))
+            if (totalSessionsResult.success()) {
+              var totalSessions = 0
+              totalSessionsResult.foreach(r => {
+                if (totalSessions == 0) totalSessions = r.value().toString.toInt
+              })
+
+              if (totalSessions > 0) {
+
+                val limit = couchbaseBulkLimit
+                var skip = 0
+
+                val year = sDate.toString("yyyy")
+                val month = sDate.toString("MM")
+
+                val dir = new File(s"/mnt/es-data/tmp/")
+                if (!dir.exists && !dir.isDirectory) {
+                  dir.mkdirs()
+                }
+
+                val file = new File(s"${dir.getCanonicalPath}/$intAppId-$year$month")
+                val bw = new BufferedWriter(new FileWriter(file))
+
+                while (skip < totalSessions) {
+                  val result = couchbaseBucket.query(ViewQuery.from("admin", "daily_session_count").startKey(startKey).endKey(endKey).reduce(false).skip(skip).limit(limit))
+                  if (result.success()) {
+                    result.foreach(row => {
+                      val doc = row.document(60, TimeUnit.SECONDS).content().removeKey("appViewActivity")
+                      bw.write(doc.toString)
+                      bw.newLine()
+                    })
+                  }
+                  skip += limit
+                }
+
+                bw.close()
+              }
+            }
+            eDate = sDate.minusDays(1)
+          }
+        }
+      }
+    })
+  }
+
+  def s3ToElasticSearch() : Unit = {
     val s3Client = new AmazonS3Client(new ProfileCredentialsProvider())
     val listObjectsRequest = new ListObjectsRequest().withBucketName("userhabit-jake-test")
     var objectListing : ObjectListing = new ObjectListing()
