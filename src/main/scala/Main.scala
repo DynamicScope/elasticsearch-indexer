@@ -8,7 +8,7 @@ import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.{GetObjectRequest, ListObjectsRequest, ObjectListing, PutObjectRequest}
 import com.amazonaws.util.json.{JSONException, JSONObject}
 import com.couchbase.client.java.document.json.JsonArray
-import com.couchbase.client.java.view.ViewQuery
+import com.couchbase.client.java.view.{ViewRow, ViewQuery}
 import com.couchbase.client.java.{Bucket, CouchbaseCluster}
 import org.elasticsearch.client.transport.TransportClient
 import org.elasticsearch.common.settings.Settings
@@ -273,6 +273,19 @@ object Main {
       appList = getAppListFromCouchbase
     }
 
+    def writeToFile(bw: BufferedWriter, row: ViewRow, timeout: Long): Long = {
+      if (timeout >= 5) return timeout
+      try {
+        val doc = row.document(timeout, TimeUnit.MINUTES).content().removeKey("appViewActivity")
+        bw.write(doc.toString)
+        bw.newLine()
+        timeout
+      } catch {
+        case e1: TimeoutException => writeToFile(bw, row, timeout + 1)
+        case e2: Exception => println(e2.getMessage) 5
+      }
+    }
+
     appList.foreach(intAppId => {
 
       println(s"----------${intAppId.toString}----------")
@@ -329,9 +342,7 @@ object Main {
                   val result = couchbaseBucket.query(ViewQuery.from("admin", "daily_session_count").startKey(startKey).endKey(endKey).reduce(false).skip(skip).limit(limit))
                   if (result.success()) {
                     result.foreach(row => {
-                      val doc = row.document(60, TimeUnit.SECONDS).content().removeKey("appViewActivity")
-                      bw.write(doc.toString)
-                      bw.newLine()
+                      writeToFile(bw, row, 1)
                     })
                   }
                   skip += limit
