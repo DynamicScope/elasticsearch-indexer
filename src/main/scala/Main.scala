@@ -276,7 +276,9 @@ object Main {
     def writeToFile(bw: BufferedWriter, row: ViewRow, timeout: Long): Unit = {
       if (timeout >= 5) return
       try {
+        println("Before doc load")
         val doc = row.document(timeout, TimeUnit.MINUTES).content().removeKey("appViewActivity")
+        println("After doc load")
         bw.write(doc.toString)
         bw.newLine()
       } catch {
@@ -338,14 +340,14 @@ object Main {
                   dir.mkdirs()
                 }
 
-                val file = new File(s"${dir.getCanonicalPath}/$intAppId-$year$month")
+                val file = new File(s"${dir.getCanonicalPath}/$intAppId-$year$month$day")
                 val bw = new BufferedWriter(new FileWriter(file))
 
                 while (skip < totalSessions) {
                   val result = couchbaseBucket.query(ViewQuery.from("admin", "daily_session_count").startKey(startKey).endKey(endKey).reduce(false).skip(skip).limit(limit))
                   if (result.success()) {
                     result.foreach(row => {
-                      println(file.length() + " bytes")
+                      //println(file.length() + " bytes")
                       writeToFile(bw, row, 1)
                     })
                   }
