@@ -273,19 +273,20 @@ object Main {
       appList = getAppListFromCouchbase
     }
 
-    def writeToFile(bw: BufferedWriter, row: ViewRow, timeout: Long): Long = {
-      if (timeout >= 5) return timeout
+    def writeToFile(bw: BufferedWriter, row: ViewRow, timeout: Long): Unit = {
+      if (timeout >= 5) return
       try {
         val doc = row.document(timeout, TimeUnit.MINUTES).content().removeKey("appViewActivity")
         bw.write(doc.toString)
         bw.newLine()
-        timeout
       } catch {
         case te: TimeoutException =>
+          println(s"Increasing timeout to $timeout")
           writeToFile(bw, row, timeout + 1)
         case e: Exception =>
+          println("----------------------------------------")
           println(e.getMessage)
-          5
+          println("----------------------------------------")
       }
     }
 
@@ -307,16 +308,14 @@ object Main {
             fDateTime = new DateTime(fromDateMillis).withHourOfDay(0).withMinuteOfHour(0)
           }
 
-          fDateTime = fDateTime.withDayOfMonth(1)
-
           println(s"fromDateTime: $fDateTime")
           var eDate = tDateTime
 
           while (eDate.getMillis > fDateTime.getMillis) {
-            val sDate = eDate.withDayOfMonth(1)
+            val sDate = eDate.minusDays(1)
 
             val startKey = JsonArray.fromJson(s"[$intAppId,${sDate.getMillis}]")
-            val endKey = JsonArray.fromJson(s"[$intAppId,${sDate.dayOfMonth().withMaximumValue().getMillis}]")
+            val endKey = JsonArray.fromJson(s"[$intAppId,${eDate.getMillis}]")
 
             val totalSessionsResult = couchbaseBucket.query(ViewQuery.from("admin", "daily_session_count").startKey(startKey).endKey(endKey).reduce(true))
             if (totalSessionsResult.success()) {
@@ -332,6 +331,7 @@ object Main {
 
                 val year = sDate.toString("yyyy")
                 val month = sDate.toString("MM")
+                val day = sDate.toString("dd")
 
                 val dir = new File(s"/mnt/es-data/tmp/")
                 if (!dir.exists && !dir.isDirectory) {
@@ -345,6 +345,7 @@ object Main {
                   val result = couchbaseBucket.query(ViewQuery.from("admin", "daily_session_count").startKey(startKey).endKey(endKey).reduce(false).skip(skip).limit(limit))
                   if (result.success()) {
                     result.foreach(row => {
+                      println(file.length() + " bytes")
                       writeToFile(bw, row, 1)
                     })
                   }
@@ -354,7 +355,7 @@ object Main {
                 bw.close()
               }
             }
-            eDate = sDate.minusDays(1)
+            eDate = sDate
           }
         }
       }
