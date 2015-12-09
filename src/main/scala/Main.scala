@@ -281,8 +281,11 @@ object Main {
         bw.newLine()
         timeout
       } catch {
-        case e1: TimeoutException => writeToFile(bw, row, timeout + 1)
-        case e2: Exception => println(e2.getMessage) 5
+        case te: TimeoutException =>
+          writeToFile(bw, row, timeout + 1)
+        case e: Exception =>
+          println(e.getMessage)
+          5
       }
     }
 
