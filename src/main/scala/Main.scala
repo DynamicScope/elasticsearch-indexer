@@ -283,12 +283,36 @@ object Main {
         bw.newLine()
       } catch {
         case te: TimeoutException =>
-          println(s"Increasing timeout to $timeout")
+          println(s"writeToFile: Increasing timeout to $timeout")
           writeToFile(bw, row, timeout + 1)
         case e: Exception =>
           println("----------------------------------------")
           println(e.getMessage)
           println("----------------------------------------")
+      }
+    }
+
+    def queryDocs(startKey: JsonArray, endKey: JsonArray, limit: Integer, skip: Int, bw: BufferedWriter, timeout: Long): Unit = {
+      if (timeout >= 5) return
+      val query = ViewQuery.from("admin", "daily_session_count").startKey(startKey).endKey(endKey).reduce(false).skip(skip).limit(limit)
+      try {
+        val result = couchbaseBucket.query(query, timeout, TimeUnit.MINUTES)
+        if (result.success()) {
+          result.foreach(row => {
+            //println(file.length() + " bytes")
+            writeToFile(bw, row, 1)
+          })
+        }
+      } catch {
+        case te: TimeoutException =>
+          println(s"queryDocs: Increasing timeout to $timeout")
+          queryDocs(startKey, endKey, limit, skip, bw, timeout + 1)
+        case e: Exception =>
+          println("----------------------------------------")
+          println(e.getMessage)
+          println("----------------------------------------")
+          logger.write(query.toString)
+          logger.newLine()
       }
     }
 
@@ -344,13 +368,7 @@ object Main {
                 val bw = new BufferedWriter(new FileWriter(file))
 
                 while (skip < totalSessions) {
-                  val result = couchbaseBucket.query(ViewQuery.from("admin", "daily_session_count").startKey(startKey).endKey(endKey).reduce(false).skip(skip).limit(limit))
-                  if (result.success()) {
-                    result.foreach(row => {
-                      //println(file.length() + " bytes")
-                      writeToFile(bw, row, 1)
-                    })
-                  }
+                  queryDocs(startKey, endKey, limit, skip, bw, 1)
                   skip += limit
                 }
 
