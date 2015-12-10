@@ -363,7 +363,7 @@ object Main {
                 }
 
                 val rfw = new RollingFileWriter(s"${dir.getCanonicalPath}/$intAppId-$year$month$day")
-                rfw.fileSizeLimit = 1048576L
+                rfw.fileSizeLimit = 512000L
 
                 while (skip < totalSessions) {
                   queryDocs(startKey, endKey, limit, skip, rfw, 1)
