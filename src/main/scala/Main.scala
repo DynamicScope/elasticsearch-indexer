@@ -10,6 +10,7 @@ import com.amazonaws.util.json.{JSONException, JSONObject}
 import com.couchbase.client.java.document.json.JsonArray
 import com.couchbase.client.java.view.{ViewRow, ViewQuery}
 import com.couchbase.client.java.{Bucket, CouchbaseCluster}
+import helper.RollingFileWriter
 import org.elasticsearch.client.transport.TransportClient
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.transport.InetSocketTransportAddress
@@ -273,18 +274,15 @@ object Main {
       appList = getAppListFromCouchbase
     }
 
-    def writeToFile(bw: BufferedWriter, row: ViewRow, timeout: Long): Unit = {
+    def writeToFile(rfw: RollingFileWriter, row: ViewRow, timeout: Long): Unit = {
       if (timeout >= 5) return
       try {
-        println("Before doc load")
         val doc = row.document(timeout, TimeUnit.MINUTES).content().removeKey("appViewActivity")
-        println("After doc load")
-        bw.write(doc.toString)
-        bw.newLine()
+        rfw.writeLine(doc.toString)
       } catch {
         case te: TimeoutException =>
           println(s"writeToFile: Increasing timeout to $timeout")
-          writeToFile(bw, row, timeout + 1)
+          writeToFile(rfw, row, timeout + 1)
         case e: Exception =>
           println("----------------------------------------")
           println(e.getMessage)
@@ -292,7 +290,7 @@ object Main {
       }
     }
 
-    def queryDocs(startKey: JsonArray, endKey: JsonArray, limit: Integer, skip: Int, bw: BufferedWriter, timeout: Long): Unit = {
+    def queryDocs(startKey: JsonArray, endKey: JsonArray, limit: Integer, skip: Int, rfw: RollingFileWriter, timeout: Long): Unit = {
       if (timeout >= 5) return
       val query = ViewQuery.from("admin", "daily_session_count").startKey(startKey).endKey(endKey).reduce(false).skip(skip).limit(limit)
       try {
@@ -300,13 +298,13 @@ object Main {
         if (result.success()) {
           result.foreach(row => {
             //println(file.length() + " bytes")
-            writeToFile(bw, row, 1)
+            writeToFile(rfw, row, 1)
           })
         }
       } catch {
         case te: TimeoutException =>
           println(s"queryDocs: Increasing timeout to $timeout")
-          queryDocs(startKey, endKey, limit, skip, bw, timeout + 1)
+          queryDocs(startKey, endKey, limit, skip, rfw, timeout + 1)
         case e: Exception =>
           println("----------------------------------------")
           println(e.getMessage)
@@ -359,20 +357,20 @@ object Main {
                 val month = sDate.toString("MM")
                 val day = sDate.toString("dd")
 
-                val dir = new File(s"/mnt/es-data/tmp/")
+                val dir = new File(s"./tmp/")
                 if (!dir.exists && !dir.isDirectory) {
                   dir.mkdirs()
                 }
 
-                val file = new File(s"${dir.getCanonicalPath}/$intAppId-$year$month$day")
-                val bw = new BufferedWriter(new FileWriter(file))
+                val rfw = new RollingFileWriter(s"${dir.getCanonicalPath}/$intAppId-$year$month$day")
+                rfw.fileSizeLimit = 1048576L
 
                 while (skip < totalSessions) {
-                  queryDocs(startKey, endKey, limit, skip, bw, 1)
+                  queryDocs(startKey, endKey, limit, skip, rfw, 1)
                   skip += limit
                 }
 
-                bw.close()
+                rfw.close()
               }
             }
             eDate = sDate
