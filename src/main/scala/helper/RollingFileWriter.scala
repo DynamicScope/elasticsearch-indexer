@@ -17,17 +17,20 @@ class RollingFileWriter(fileName: String) {
   private var bufferedWriter = new BufferedWriter(streamWriter)
 
   def writeLine(line: String): Unit = {
-    val lineByteSize = line.getBytes("UTF-8").length.toLong
-    fileSize += lineByteSize
+    val lineByteSize = line.getBytes("UTF-8").length
+
     if (lineByteSize > fileSizeLimit) {
       //println(s"Session data size $lineByteSize bytes exceeds single file size limit $fileSizeLimit bytes")
       return
     }
-    if (fileSize > fileSizeLimit) {
+
+    val peekFileSize = fileSize + lineByteSize + System.lineSeparator().getBytes("UTF-8").length
+    if (peekFileSize > fileSizeLimit) {
       //println(s"fileSize is greater than fileSizeLimit: $fileSize")
       bufferedWriter = getNewBufferedWriter
     }
     //println(s"fileSize: $fileSize")
+    fileSize = peekFileSize
     bufferedWriter.write(line)
     bufferedWriter.newLine()
   }
