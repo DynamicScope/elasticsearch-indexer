@@ -357,13 +357,12 @@ object Main {
                 val month = sDate.toString("MM")
                 val day = sDate.toString("dd")
 
-                val dir = new File(s"./tmp/")
+                val dir = new File(s"/mnt/es-data/tmp/")
                 if (!dir.exists && !dir.isDirectory) {
                   dir.mkdirs()
                 }
 
                 val rfw = new RollingFileWriter(s"${dir.getCanonicalPath}/$intAppId-$year$month$day")
-                rfw.fileSizeLimit = 512000L
 
                 while (skip < totalSessions) {
                   queryDocs(startKey, endKey, limit, skip, rfw, 1)
