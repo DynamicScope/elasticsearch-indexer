@@ -357,7 +357,7 @@ object Main {
                 val month = sDate.toString("MM")
                 val day = sDate.toString("dd")
 
-                val dir = new File(s"/mnt/es-data/tmp/")
+                val dir = new File(s"/mnt/tmp/")
                 if (!dir.exists && !dir.isDirectory) {
                   dir.mkdirs()
                 }

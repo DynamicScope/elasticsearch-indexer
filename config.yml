@@ -2,6 +2,9 @@ couchbase:
   nodes:
     - "127.0.0.1"
   bucket:
-    name: "userhabit"
-    password: "a1231618"
-app_ids: [5,7]
+    name: ""
+    password: ""
+  bulk-limit: 500
+app-ids: []
+from-datetime: [2015,1,1,0,0]
+to-datetime: [2015,12,1,0,0]

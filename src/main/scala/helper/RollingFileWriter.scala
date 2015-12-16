@@ -7,7 +7,7 @@ import java.io._
   */
 class RollingFileWriter(fileName: String) {
 
-  var fileSizeLimit: Long = 5368709120L
+  var fileSizeLimit: Long = 5368709120L   // 5GB
 
   private var rollingNumber: Integer = -1
   private var fileSize: Long = 0L
