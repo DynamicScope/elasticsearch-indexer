@@ -8,3 +8,7 @@ couchbase:
 app-ids: []
 from-datetime: [2015,1,1,0,0]
 to-datetime: [2015,12,1,0,0]
+# elastic.node.ip:
+
+# A directory path to export data from Couchbase
+# dir.export: /path/to/export
