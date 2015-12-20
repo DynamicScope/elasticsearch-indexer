@@ -26,16 +26,17 @@ import scala.util.control.Breaks._
   */
 object Main {
 
-  var appList : util.ArrayList[Integer] = new util.ArrayList[Integer]()
-  var couchbaseCluster : CouchbaseCluster = null
-  var couchbaseNodes : util.List[String] = new util.ArrayList[String]
-  var couchbaseBucket : Bucket = null
+  var appList: util.ArrayList[Integer] = new util.ArrayList[Integer]()
+  var couchbaseCluster: CouchbaseCluster = null
+  var couchbaseNodes: util.List[String] = new util.ArrayList[String]
+  var couchbaseBucket: Bucket = null
   var couchbaseBucketName = ""
   var couchbaseBucketPassword = ""
-  var couchbaseBulkLimit : Integer = 0
-  var fromDateTime : IndexedSeq[Integer] = IndexedSeq.empty
-  var toDateTime : IndexedSeq[Integer] = IndexedSeq.empty
-  var logger : BufferedWriter = null
+  var couchbaseBulkLimit: Integer = 0
+  var fromDateTime: IndexedSeq[Integer] = IndexedSeq.empty
+  var toDateTime: IndexedSeq[Integer] = IndexedSeq.empty
+  var logger: BufferedWriter = null
+  var exportDir = "./export"
 
   def main (args: Array[String]): Unit = {
     try {
@@ -103,6 +104,8 @@ object Main {
 
         couchbaseBulkLimit = couchbase.getOrDefault("bulk-limit", 500.asInstanceOf[Integer]).asInstanceOf[Integer]
       } else throw new Exception("couchbase option is required.")
+
+      exportDir = data.getOrDefault("dir.export", "./export").toString
     } catch {
       case e: FileNotFoundException => throw new Exception(s"${file.getCanonicalPath} : was not found.")
     }
@@ -357,7 +360,7 @@ object Main {
                 val month = sDate.toString("MM")
                 val day = sDate.toString("dd")
 
-                val dir = new File(s"/mnt/tmp/")
+                val dir = new File(exportDir)
                 if (!dir.exists && !dir.isDirectory) {
                   dir.mkdirs()
                 }
