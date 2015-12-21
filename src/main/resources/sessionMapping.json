@@ -144,6 +144,9 @@
           }
         }
       },
+      "i": {
+        "type": "date"
+      },
       "w": {
         "type": "integer"
       },
