@@ -11,6 +11,8 @@ import com.couchbase.client.java.document.json.JsonArray
 import com.couchbase.client.java.view.{ViewRow, ViewQuery}
 import com.couchbase.client.java.{Bucket, CouchbaseCluster}
 import helper.RollingFileWriter
+import io.userhabit.library.orm.Mapper
+import io.userhabit.library.v1.model.Session
 import org.elasticsearch.client.transport.TransportClient
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.transport.InetSocketTransportAddress
@@ -19,6 +21,7 @@ import org.joda.time.DateTime
 import org.yaml.snakeyaml.Yaml
 
 import scala.collection.JavaConversions._
+import scala.io.Source
 import scala.util.control.Breaks._
 
 /**
@@ -37,6 +40,7 @@ object Main {
   var toDateTime: IndexedSeq[Integer] = IndexedSeq.empty
   var logger: BufferedWriter = null
   var exportDir = "./export"
+  var elasticNodeIp = "127.0.0.1"
 
   def main (args: Array[String]): Unit = {
     try {
@@ -57,9 +61,10 @@ object Main {
     val file = new File(s"${dir.getCanonicalPath}/logging")
     logger = new BufferedWriter(new FileWriter(file))
 
-    openCouchbase()
-    couchbaseToFile()
-    closeCouchbase()
+    //openCouchbase()
+    //couchbaseToFile()
+    fileToElasticSearch()
+    //closeCouchbase()
 
     logger.close()
   }
@@ -106,6 +111,8 @@ object Main {
       } else throw new Exception("couchbase option is required.")
 
       exportDir = data.getOrDefault("dir.export", "./export").toString
+
+      elasticNodeIp = data.getOrDefault("elastic.node.ip", elasticNodeIp).toString
     } catch {
       case e: FileNotFoundException => throw new Exception(s"${file.getCanonicalPath} : was not found.")
     }
@@ -390,7 +397,7 @@ object Main {
     val settings = Settings.settingsBuilder().build()
 
     val client = TransportClient.builder().settings(settings).build()
-      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("172.31.1.101"), 9300))
+      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(elasticNodeIp), 9300))
 
     do {
       objectListing = s3Client.listObjects(listObjectsRequest)
@@ -449,6 +456,44 @@ object Main {
     } while (objectListing.isTruncated)
 
     client.close()
+  }
+
+  def fileToElasticSearch(): Unit = {
+
+    val settings = Settings.settingsBuilder().build()
+    val client = TransportClient.builder().settings(settings).build()
+      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(elasticNodeIp), 9300))
+
+    val d = new File(exportDir)
+    if (d.exists() && d.isDirectory) {
+      val files = d.listFiles.filter(_.isFile).toList
+      for (file <- files) {
+        if (file.isFile) {
+          val names = file.getName.split("-")
+          if (names.length > 2) {
+            val indexName = s"uh-${names(0)}-${names(1)}"
+            val indexType = "session"
+            println(indexName)
+            val isIndexExists = client.admin().indices().prepareExists(indexName).execute().actionGet().isExists
+            if (!isIndexExists) {
+              val res = client.admin().indices().prepareCreate(indexName).addMapping(indexType, getMapping(indexType)).execute().actionGet()
+              println(res.toString)
+            }
+
+            try {
+              for (line <- Source.fromFile(file.getCanonicalPath, "UTF-8").getLines) {
+                val response = client.prepareIndex(indexName, indexType)
+                  .setSource(line)
+                  .get()
+                println(response)
+              }
+            } catch {
+              case e: Exception => println(e.getMessage)
+            }
+          }
+        }
+      }
+    }
   }
 
   def getMapping(indexType : String) : XContentBuilder = {
