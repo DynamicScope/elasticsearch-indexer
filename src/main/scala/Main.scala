@@ -12,7 +12,7 @@ import com.couchbase.client.java.view.{ViewQuery, ViewRow}
 import com.couchbase.client.java.{Bucket, CouchbaseCluster}
 import helper.RollingFileWriter
 import io.userhabit.library.orm.Mapper
-import io.userhabit.library.v1.model.Session
+import io.userhabit.library._
 import io.userhabit.library.v2.tool.V1ToV2Migrator
 import org.elasticsearch.client.transport.TransportClient
 import org.elasticsearch.common.settings.Settings
@@ -63,7 +63,7 @@ object Main {
     logger = new BufferedWriter(new FileWriter(file))
 
     openCouchbase()
-    couchbaseToFile()
+//    couchbaseToFile()
 //    fileToElasticSearch()
     closeCouchbase()
 
@@ -483,22 +483,25 @@ object Main {
             println(indexName)
             val isIndexExists = client.admin().indices().prepareExists(indexName).execute().actionGet().isExists
             if (!isIndexExists) {
-              val res = client.admin().indices().prepareCreate(indexName).addMapping(indexType, getMapping(indexType)).execute().actionGet()
+              val res = client.admin().indices().prepareCreate(indexName).addMapping(indexType, getMappingJson).execute().actionGet()
               println(res.toString)
             }
 
             try {
               for (line <- Source.fromFile(file.getCanonicalPath, "UTF-8").getLines) {
 
+                val key = new JSONObject(line).get("sessionId").toString
+
                 val mapper = new Mapper()
                 val migrator = new V1ToV2Migrator()
 
-                val sessionV1 = mapper.readValue(line, classOf[Session])
-                val sessionV2 = migrator.migrateToV2Session("",sessionV1)
-                val json = mapper.writeValueAsString(sessionV2)
+                val v1session = mapper.readValue(line, classOf[v1.model.Session])
+                val v2session = migrator.migrateToV2Session(key, v1session)
+                val data = mapper.writeValueAsString(v2session)
 
                 val response = client.prepareIndex(indexName, indexType)
-                  .setSource(json)
+                  .setId(key)
+                  .setSource(data)
                   .get()
                 println(response)
               }
@@ -509,6 +512,10 @@ object Main {
         }
       }
     }
+  }
+
+  def getMappingJson: String = {
+    Source.fromFile(getClass.getResource("/sessionMapping.json").getFile, "UTF-8").mkString
   }
 
   def getMapping(indexType : String) : XContentBuilder = {

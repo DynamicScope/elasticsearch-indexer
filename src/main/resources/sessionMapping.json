@@ -1,0 +1,158 @@
+{
+  "session": {
+    "properties": {
+      "a": {
+        "properties": {
+          "a": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "c": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "n": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "s": {
+            "type": "integer"
+          },
+          "v": {
+            "type": "string",
+            "index": "not_analyzed"
+          }
+        }
+      },
+      "d": {
+        "properties": {
+          "c": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "b": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "i": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "m": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "n": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "s": {
+            "properties": {
+              "w": {
+                "type": "integer"
+              },
+              "h": {
+                "type": "integer"
+              }
+            }
+          },
+          "d": {
+            "type": "integer"
+          },
+          "o": {
+            "type": "integer"
+          }
+        }
+      },
+      "t": {
+        "properties": {
+          "c": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "t": {
+            "type": "string",
+            "index": "not_analyzed"
+          }
+        }
+      },
+      "s": {
+        "properties": {
+          "i": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "t": {
+            "type": "date"
+          },
+          "d": {
+            "type": "date"
+          },
+          "v": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "l": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "o": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "z": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "c": {
+            "type": "integer"
+          },
+          "u": {
+            "type": "long"
+          }
+        }
+      },
+      "f": {
+        "enabled": "false"
+      },
+      "l": {
+        "properties": {
+          "t": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "c": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "s": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "n": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "a": {
+            "type": "double"
+          },
+          "o": {
+            "type": "double"
+          },
+          "i": {
+            "type": "ip"
+          }
+        }
+      },
+      "w": {
+        "type": "integer"
+      },
+      "p": {
+        "type": "long"
+      },
+      "v": {
+        "type": "long"
+      }
+    }
+  }
+}
