@@ -8,11 +8,12 @@ import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.{GetObjectRequest, ListObjectsRequest, ObjectListing, PutObjectRequest}
 import com.amazonaws.util.json.{JSONException, JSONObject}
 import com.couchbase.client.java.document.json.JsonArray
-import com.couchbase.client.java.view.{ViewRow, ViewQuery}
+import com.couchbase.client.java.view.{ViewQuery, ViewRow}
 import com.couchbase.client.java.{Bucket, CouchbaseCluster}
 import helper.RollingFileWriter
 import io.userhabit.library.orm.Mapper
 import io.userhabit.library.v1.model.Session
+import io.userhabit.library.v2.tool.V1ToV2Migrator
 import org.elasticsearch.client.transport.TransportClient
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.transport.InetSocketTransportAddress
@@ -61,10 +62,10 @@ object Main {
     val file = new File(s"${dir.getCanonicalPath}/logging")
     logger = new BufferedWriter(new FileWriter(file))
 
-    //openCouchbase()
-    //couchbaseToFile()
-    fileToElasticSearch()
-    //closeCouchbase()
+    openCouchbase()
+    couchbaseToFile()
+//    fileToElasticSearch()
+    closeCouchbase()
 
     logger.close()
   }
@@ -287,7 +288,8 @@ object Main {
     def writeToFile(rfw: RollingFileWriter, row: ViewRow, timeout: Long): Unit = {
       if (timeout >= 5) return
       try {
-        val doc = row.document(timeout, TimeUnit.MINUTES).content().removeKey("appViewActivity")
+        val doc = row.document(timeout, TimeUnit.MINUTES).content()
+          .put("sessionId", row.id())
         rfw.writeLine(doc.toString)
       } catch {
         case te: TimeoutException =>
@@ -463,6 +465,9 @@ object Main {
     val settings = Settings.settingsBuilder()
       .put("cluster.name", "Avengers")
       .put("client.transport.sniff", true).build()
+
+    println(elasticNodeIp)
+
     val client = TransportClient.builder().settings(settings).build()
       .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(elasticNodeIp), 9300))
 
@@ -484,8 +489,16 @@ object Main {
 
             try {
               for (line <- Source.fromFile(file.getCanonicalPath, "UTF-8").getLines) {
+
+                val mapper = new Mapper()
+                val migrator = new V1ToV2Migrator()
+
+                val sessionV1 = mapper.readValue(line, classOf[Session])
+                val sessionV2 = migrator.migrateToV2Session("",sessionV1)
+                val json = mapper.writeValueAsString(sessionV2)
+
                 val response = client.prepareIndex(indexName, indexType)
-                  .setSource(line)
+                  .setSource(json)
                   .get()
                 println(response)
               }
