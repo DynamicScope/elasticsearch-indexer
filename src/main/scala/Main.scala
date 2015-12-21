@@ -64,7 +64,7 @@ object Main {
 
     openCouchbase()
 //    couchbaseToFile()
-//    fileToElasticSearch()
+    fileToElasticSearch()
     closeCouchbase()
 
     logger.close()
