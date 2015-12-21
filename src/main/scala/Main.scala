@@ -460,7 +460,9 @@ object Main {
 
   def fileToElasticSearch(): Unit = {
 
-    val settings = Settings.settingsBuilder().build()
+    val settings = Settings.settingsBuilder()
+      .put("cluster.name", "Avengers")
+      .put("client.transport.sniff", true).build()
     val client = TransportClient.builder().settings(settings).build()
       .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(elasticNodeIp), 9300))
 
