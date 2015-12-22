@@ -509,7 +509,9 @@ object Main {
 //                println(response)
               }
             } catch {
-              case e: Exception => println(e.getMessage)
+              case e: Exception =>
+                println("Failed to insert session data")
+                println(e.getMessage)
             }
           }
         }
