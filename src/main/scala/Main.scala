@@ -11,6 +11,7 @@ import com.couchbase.client.java.document.json.JsonArray
 import com.couchbase.client.java.view.{ViewQuery, ViewRow}
 import com.couchbase.client.java.{Bucket, CouchbaseCluster}
 import helper.RollingFileWriter
+import io.userhabit.library.db.ElasticHelper
 import io.userhabit.library.orm.Mapper
 import io.userhabit.library._
 import io.userhabit.library.v2.tool.V1ToV2Migrator
@@ -462,14 +463,15 @@ object Main {
 
   def fileToElasticSearch(): Unit = {
 
-    val settings = Settings.settingsBuilder()
-      .put("cluster.name", "Avengers")
-      .put("client.transport.sniff", true).build()
+    val c = ElasticHelper.getInstance()
+    c.connect(InetAddress.getByName(elasticNodeIp))
 
-    println(elasticNodeIp)
-
-    val client = TransportClient.builder().settings(settings).build()
-      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(elasticNodeIp), 9300))
+//    val settings = Settings.settingsBuilder()
+//      .put("cluster.name", "Avengers")
+//      .put("client.transport.sniff", true).build()
+//
+//    val client = TransportClient.builder().settings(settings).build()
+//      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(elasticNodeIp), 9300))
 
     val d = new File(exportDir)
     if (d.exists() && d.isDirectory) {
@@ -479,13 +481,13 @@ object Main {
           val names = file.getName.split("-")
           if (names.length > 2) {
             val indexName = s"uh-${names(0)}-${names(1)}"
-            val indexType = "session"
+//            val indexType = "session"
             println(indexName)
-            val isIndexExists = client.admin().indices().prepareExists(indexName).execute().actionGet().isExists
-            if (!isIndexExists) {
-              val res = client.admin().indices().prepareCreate(indexName).addMapping(indexType, getMappingJson).execute().actionGet()
-              println(res.toString)
-            }
+//            val isIndexExists = client.admin().indices().prepareExists(indexName).get().isExists
+//            if (!isIndexExists) {
+//              val res = client.admin().indices().prepareCreate(indexName).addMapping(indexType, getMappingJson).get()
+//              println(res.toString)
+//            }
 
             try {
               for (line <- Source.fromFile(file.getCanonicalPath, "UTF-8").getLines) {
@@ -497,13 +499,14 @@ object Main {
 
                 val v1session = mapper.readValue(line, classOf[v1.model.Session])
                 val v2session = migrator.migrateToV2Session(key, v1session)
-                val data = mapper.writeValueAsString(v2session)
+//                val data = mapper.writeValueAsString(v2session)
 
-                val response = client.prepareIndex(indexName, indexType)
-                  .setId(key)
-                  .setSource(data)
-                  .get()
-                println(response)
+                c.insertSessionData(indexName, v2session)
+
+//                val response = client.prepareIndex(indexName, indexType, key)
+//                  .setSource(data)
+//                  .get()
+//                println(response)
               }
             } catch {
               case e: Exception => println(e.getMessage)
@@ -512,6 +515,9 @@ object Main {
         }
       }
     }
+
+//    client.close()
+    c.close()
   }
 
   def getMappingJson: String = {
