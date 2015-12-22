@@ -512,6 +512,9 @@ object Main {
               case e: Exception =>
                 println("Failed to insert session data")
                 println(e.getMessage)
+                println(e.getCause)
+                println(e.getStackTrace)
+                e.printStackTrace()
             }
           }
         }
