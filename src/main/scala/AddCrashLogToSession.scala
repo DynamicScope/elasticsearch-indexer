@@ -20,12 +20,12 @@ class AddCrashLogToSession extends CrashSessionHandler {
 //        Some(new SerialBlob(dec_byte))
 //    }
 
-    val query = Crashes.filter(f = p => p.versionId === versionId).map(p => (p.stacktrace, p.uniqueId)).result
-    val result = DBHelper.database.run(query)
-    println(result.toString)
-    result.foreach(r => {
-      println(r)
-    })
+//    val query = Crashes.filter(p => p.versionId === versionId).map(p => (p.stacktrace, p.uniqueId)).result
+//    val result = DBHelper.database.run(query)
+//    println(result.toString)
+//    result.foreach(r => {
+//      println(r)
+//    })
     ""
   }
 }

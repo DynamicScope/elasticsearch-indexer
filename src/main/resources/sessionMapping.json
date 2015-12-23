@@ -109,6 +109,9 @@
           },
           "u": {
             "type": "long"
+          },
+          "n": {
+            "type": "integer"
           }
         }
       },
@@ -155,6 +158,9 @@
       },
       "v": {
         "type": "long"
+      },
+      "n": {
+        "type": "integer"
       }
     }
   }

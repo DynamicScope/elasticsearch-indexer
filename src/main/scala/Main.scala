@@ -467,13 +467,6 @@ object Main {
     val c = ElasticHelper.getInstance()
     c.connect(InetAddress.getByName(elasticNodeIp))
 
-//    val settings = Settings.settingsBuilder()
-//      .put("cluster.name", "Avengers")
-//      .put("client.transport.sniff", true).build()
-//
-//    val client = TransportClient.builder().settings(settings).build()
-//      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(elasticNodeIp), 9300))
-
     val d = new File(exportDir)
     if (d.exists() && d.isDirectory) {
 
@@ -487,13 +480,7 @@ object Main {
           val names = file.getName.split("-")
           if (names.length > 2) {
             val indexName = s"uh-${names(0)}-${names(1)}"
-//            val indexType = "session"
             println(indexName)
-//            val isIndexExists = client.admin().indices().prepareExists(indexName).get().isExists
-//            if (!isIndexExists) {
-//              val res = client.admin().indices().prepareCreate(indexName).addMapping(indexType, getMappingJson).get()
-//              println(res.toString)
-//            }
 
             try {
               for (line <- Source.fromFile(file.getCanonicalPath, "UTF-8").getLines) {
@@ -501,14 +488,12 @@ object Main {
                 val key = new JSONObject(line).get("sessionId").toString
                 val v1session = mapper.readValue(line, classOf[v1.model.Session])
                 val v2session = migrator.migrateToV2Session(key, v1session)
-//                val data = mapper.writeValueAsString(v2session)
 
-                c.insertSessionData(indexName, v2session)
-
-//                val response = client.prepareIndex(indexName, indexType, key)
-//                  .setSource(data)
-//                  .get()
-//                println(response)
+                if (!c.existsSession(indexName, v2session)) {
+                  val response = c.indexSession(indexName, v2session)
+                  if (!response.isCreated)
+                    println(response.toString)
+                }
               }
             } catch {
               case e: Exception => e.printStackTrace()
