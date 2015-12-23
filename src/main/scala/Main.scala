@@ -15,6 +15,7 @@ import io.userhabit.library.db.ElasticHelper
 import io.userhabit.library.orm.Mapper
 import io.userhabit.library._
 import io.userhabit.library.v2.tool.V1ToV2Migrator
+import io.userhabit.library.v2.tool.V1ToV2Migrator.CrashSessionHandler
 import org.elasticsearch.client.transport.TransportClient
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.transport.InetSocketTransportAddress
@@ -63,10 +64,10 @@ object Main {
     val file = new File(s"${dir.getCanonicalPath}/logging")
     logger = new BufferedWriter(new FileWriter(file))
 
-    openCouchbase()
+//    openCouchbase()
 //    couchbaseToFile()
     fileToElasticSearch()
-    closeCouchbase()
+//    closeCouchbase()
 
     logger.close()
   }
@@ -475,6 +476,11 @@ object Main {
 
     val d = new File(exportDir)
     if (d.exists() && d.isDirectory) {
+
+      val mapper = new Mapper()
+      val migrator = new V1ToV2Migrator()
+      migrator.setCrashSessionHandler(new AddCrashLogToSession)
+
       val files = d.listFiles.filter(_.isFile).toList
       for (file <- files) {
         if (file.isFile) {
@@ -493,10 +499,6 @@ object Main {
               for (line <- Source.fromFile(file.getCanonicalPath, "UTF-8").getLines) {
 
                 val key = new JSONObject(line).get("sessionId").toString
-
-                val mapper = new Mapper()
-                val migrator = new V1ToV2Migrator()
-
                 val v1session = mapper.readValue(line, classOf[v1.model.Session])
                 val v2session = migrator.migrateToV2Session(key, v1session)
 //                val data = mapper.writeValueAsString(v2session)
@@ -509,12 +511,7 @@ object Main {
 //                println(response)
               }
             } catch {
-              case e: Exception =>
-                println("Failed to insert session data")
-                println(e.getMessage)
-                println(e.getCause)
-                println(e.getStackTrace)
-                e.printStackTrace()
+              case e: Exception => e.printStackTrace()
             }
           }
         }
