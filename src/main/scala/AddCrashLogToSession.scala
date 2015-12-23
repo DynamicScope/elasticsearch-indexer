@@ -1,10 +1,8 @@
-import java.sql.Blob
-import javax.sql.rowset.serial.SerialBlob
-
 import helper.DBHelper
 import io.userhabit.library.v2.tool.V1ToV2Migrator.CrashSessionHandler
 import model.Tables._
 import slick.driver.MySQLDriver.api._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
@@ -24,6 +22,7 @@ class AddCrashLogToSession extends CrashSessionHandler {
 
     val query = Crashes.filter(f = p => p.versionId === versionId).map(p => (p.stacktrace, p.uniqueId)).result
     val result = DBHelper.database.run(query)
+    println(result.toString)
     result.foreach(r => {
       println(r)
     })
