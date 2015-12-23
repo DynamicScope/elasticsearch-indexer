@@ -11,6 +11,7 @@ libraryDependencies += "org.yaml" % "snakeyaml" % "1.16"
 libraryDependencies += "mysql" % "mysql-connector-java" % "5.1.34"
 libraryDependencies += "com.typesafe.slick" %% "slick" % "3.1.1"
 libraryDependencies += "com.typesafe.slick" %% "slick-codegen" % "3.1.1"
+libraryDependencies += "com.typesafe.slick" %% "slick-hikaricp" % "3.1.1"
 libraryDependencies += "com.mchange" % "c3p0" % "0.9.2"
 libraryDependencies += "io.userhabit.library" % "userhabitlib" % "1.0.0-SNAPSHOT" withSources()
 
