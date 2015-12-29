@@ -42,7 +42,7 @@ object Main {
   var toDateTime: IndexedSeq[Integer] = IndexedSeq.empty
   var logger: BufferedWriter = null
   var exportDir = "./export"
-  var elasticNodeIp = "127.0.0.1"
+  var elasticNodeIp = "10.10.36.120"
 
   def main (args: Array[String]): Unit = {
     try {
