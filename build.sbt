@@ -13,7 +13,7 @@ libraryDependencies += "com.typesafe.slick" %% "slick" % "3.1.1"
 libraryDependencies += "com.typesafe.slick" %% "slick-codegen" % "3.1.1"
 libraryDependencies += "com.typesafe.slick" %% "slick-hikaricp" % "3.1.1"
 libraryDependencies += "com.mchange" % "c3p0" % "0.9.2"
-libraryDependencies += "io.userhabit.library" % "userhabitlib" % "1.0.0-SNAPSHOT" withSources()
+libraryDependencies += "io.userhabit.library" % "userhabitlib" % "1.0.0-SNAPSHOT" withSources() changing()
 
 credentials += Credentials("Sonatype Nexus Repository Manager", "team.andbut.com", "deployment", "JPw}eb4)7fdR2kgB")
 

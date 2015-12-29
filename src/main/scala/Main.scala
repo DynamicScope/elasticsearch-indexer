@@ -3,6 +3,7 @@ import java.net.InetAddress
 import java.util
 import java.util.concurrent.{TimeUnit, TimeoutException}
 
+import _root_.io.userhabit.library.v2.tool.V1ToV2Migrator
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.{GetObjectRequest, ListObjectsRequest, ObjectListing, PutObjectRequest}
@@ -14,8 +15,6 @@ import helper.RollingFileWriter
 import io.userhabit.library.db.ElasticHelper
 import io.userhabit.library.orm.Mapper
 import io.userhabit.library._
-import io.userhabit.library.v2.tool.V1ToV2Migrator
-import io.userhabit.library.v2.tool.V1ToV2Migrator.CrashSessionHandler
 import org.elasticsearch.client.transport.TransportClient
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.transport.InetSocketTransportAddress
