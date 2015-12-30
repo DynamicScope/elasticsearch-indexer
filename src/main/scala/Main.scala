@@ -478,8 +478,9 @@ object Main {
         if (file.isFile) {
           val names = file.getName.split("-")
           if (names.length > 2) {
-            val indexName = s"uh-${names(0)}-${names(1)}"
-            println(indexName)
+            val appId = names(0)
+            val YYYYMMDD = names(1)
+            println(s"$appId-$YYYYMMDD")
 
             try {
               for (line <- Source.fromFile(file.getCanonicalPath, "UTF-8").getLines) {
@@ -488,8 +489,8 @@ object Main {
                 val v1session = mapper.readValue(line, classOf[v1.model.Session])
                 val v2session = migrator.migrateToV2Session(key, v1session)
 
-                if (!c.existsSession(indexName, v2session)) {
-                  val response = c.indexSession(indexName, v2session)
+                if (!c.existsSession(appId, YYYYMMDD, v2session)) {
+                  val response = c.indexSession(appId, YYYYMMDD, v2session)
                   if (!response.isCreated)
                     println(response.toString)
                 }
