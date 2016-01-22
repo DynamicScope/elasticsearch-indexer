@@ -12,7 +12,7 @@ import com.couchbase.client.java.document.json.JsonArray
 import com.couchbase.client.java.view.{ViewQuery, ViewRow}
 import com.couchbase.client.java.{Bucket, CouchbaseCluster}
 import helper.RollingFileWriter
-import io.userhabit.library.db.ElasticHelper
+import io.userhabit.library.db.ElasticUtils
 import io.userhabit.library.orm.Mapper
 import io.userhabit.library._
 import org.elasticsearch.client.transport.TransportClient
@@ -407,7 +407,7 @@ object Main {
       val objectSummaries = objectListing.getObjectSummaries
       val newLine = "\n"
       println(objectSummaries.size())
-      for (i <- 0 to objectSummaries.size() - 1) {
+      for (i <- 0 until objectSummaries.size()) {
         val key = objectSummaries.get(i).getKey
         val s3Object = s3Client.getObject(new GetObjectRequest("userhabit-jake-test", key))
 
@@ -463,8 +463,8 @@ object Main {
 
   def fileToElasticSearch(): Unit = {
 
-    val c = ElasticHelper.getInstance()
-    c.connect(InetAddress.getByName(elasticNodeIp))
+    val esUtils = new ElasticUtils()
+    esUtils.connect(new InetSocketTransportAddress(InetAddress.getByName(elasticNodeIp), 9300))
 
     val d = new File(exportDir)
     if (d.exists() && d.isDirectory) {
@@ -488,12 +488,7 @@ object Main {
                 val key = new JSONObject(line).get("sessionId").toString
                 val v1session = mapper.readValue(line, classOf[v1.model.Session])
                 val v2session = migrator.migrateToV2Session(key, v1session)
-
-                if (!c.existsSession(appId, YYYYMMDD, v2session)) {
-                  val response = c.indexSession(appId, YYYYMMDD, v2session)
-                  if (!response.isCreated)
-                    println(response.toString)
-                }
+                esUtils.addToBulkIndex(v2session)
               }
             } catch {
               case e: Exception => e.printStackTrace()
@@ -503,8 +498,7 @@ object Main {
       }
     }
 
-//    client.close()
-    c.close()
+    esUtils.close()
   }
 
   def getMappingJson: String = {
