@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+<hibernate-configuration>
+    <session-factory>
+        <!--
+        hibernate c3p0 settings
+        -->
+        <property name="hibernate.c3p0.min_size">5</property>
+        <property name="hibernate.c3p0.max_size">20</property>
+        <property name="hibernate.c3p0.timeout">300</property>
+        <property name="hibernate.c3p0.max_statements">50</property>
+        <property name="hibernate.c3p0.idle_test_period">3000</property>
+        <property name="c3p0.preferredTestQuery">select 1;</property>
+        <property name="hibernate.connection.release_mode">after_transaction</property>
+        <!--
+        hibernate setting
+        -->
+        <property name="hibernate.generate_statistics">true</property>
+        <property name="hibernate.cache.use_query_cache">false</property>
+        <property name="hibernate.cache.use_second_level_cache">false</property>
+        <!-- http://stackoverflow.com/questions/19303348/hibernate-nocacheregionfactoryavailableexception -->
+        <property name="hibernate.current_session_context_class">thread</property>
+        <!--<property name="show_sql">true</property>-->
+
+        <property name="dialect">org.hibernate.dialect.PostgreSQL94Dialect</property>
+        <property name="connection.driver_class">org.postgresql.Driver</property>
+        <property name="connection.url">jdbc:postgresql://localhost:5432/userhabitdb</property>
+        <!--<property name="connection.username"></property>-->
+        <!--<property name="connection.password"></property>-->
+        <!--<property name="connection.pool_size">10</property>--> <!-- using external pool -->
+
+        <property name="hibernate.jdbc.use_streams_for_binary">true</property>
+    </session-factory>
+</hibernate-configuration>

@@ -9,7 +9,7 @@ import javax.crypto.spec.{IvParameterSpec, SecretKeySpec}
 
 import com.amazonaws.util.Base64
 import com.typesafe.config.ConfigFactory
-import slick.driver.MySQLDriver.api._
+//import slick.driver.MySQLDriver.api._
 
 /**
   * Created by DynamicScope on 2015. 12. 23..
@@ -33,21 +33,21 @@ object DBHelper {
 //    Database.forDataSource(ds)
 //  }
 
-  lazy val database = Database.forConfig("mysql")
-
-  def gen_model() = {
-    slick.codegen.SourceCodeGenerator.main(
-      Array(DBConfig.slickDriver,
-        DBConfig.driver,
-        DBConfig.url,
-        "src/main/scala",
-        "model",
-        DBConfig.username,
-        DBConfig.password
-      )
-    )
-
-  }
+//  lazy val database = Database.forConfig("mysql")
+//
+//  def gen_model() = {
+//    slick.codegen.SourceCodeGenerator.main(
+//      Array(DBConfig.slickDriver,
+//        DBConfig.driver,
+//        DBConfig.url,
+//        "src/main/scala",
+//        "model",
+//        DBConfig.username,
+//        DBConfig.password
+//      )
+//    )
+//
+//  }
 
   def getTimestamp(t:String): Timestamp = {
     val sdf:SimpleDateFormat = new SimpleDateFormat("yyyyMMddHHmmss")

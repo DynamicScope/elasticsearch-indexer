@@ -1,9 +1,5 @@
-import helper.DBHelper
+import io.userhabit.library.db.service.CrashServiceImpl
 import io.userhabit.library.v2.tool.V1ToV2Migrator.CrashSessionHandler
-import model.Tables._
-import slick.driver.MySQLDriver.api._
-
-import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * Created by DynamicScope on 2015. 12. 23..
@@ -11,21 +7,11 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class AddCrashLogToSession extends CrashSessionHandler {
 
   override def processCrashSession(appId: Int, versionId: Int, key: String): String = {
-
-//    val sessionId: Option[Blob] = key match {
-//      case "" => None
-//      case p: String =>
-//        val dec = DBHelper.decrypt(p)
-//        val dec_byte:Array[Byte] = DBHelper.uuidStringToArray(dec)
-//        Some(new SerialBlob(dec_byte))
-//    }
-
-//    val query = Crashes.filter(p => p.versionId === versionId).map(p => (p.stacktrace, p.uniqueId)).result
-//    val result = DBHelper.database.run(query)
-//    println(result.toString)
-//    result.foreach(r => {
-//      println(r)
-//    })
-    ""
+    val crashService = new CrashServiceImpl
+    val crash = crashService.findByUniqueId(key.getBytes)
+    if (crash != null)
+      crash.getStacktrace
+    else
+      "No Stacktrace"
   }
 }
