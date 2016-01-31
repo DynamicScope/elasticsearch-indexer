@@ -425,7 +425,7 @@ object Main {
             // val strJson = scala.io.Source.fromInputStream(s3Object.getObjectContent).mkString
 
             val as = mapper.readValue(sessionJson, classOf[AnalyzedSession])
-            esUtils.addToBulkIndex(as)
+            esUtils.addToBulkIndex(as, ElasticUtils.INDEX_TYPE_SESSION)
 
             byteOffset = sessionJson.getBytes().length + newLine.getBytes().length
           } catch {
