@@ -3,6 +3,8 @@ import java.net.InetAddress
 import java.util
 import java.util.concurrent.{TimeUnit, TimeoutException}
 
+import _root_.io.userhabit.library.util.S3Utils
+import _root_.io.userhabit.library.v2.model.analysis.AnalyzedSession
 import _root_.io.userhabit.library.v2.tool.V1ToV2Migrator
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.AmazonS3Client
@@ -11,7 +13,7 @@ import com.amazonaws.util.json.{JSONException, JSONObject}
 import com.couchbase.client.java.document.json.JsonArray
 import com.couchbase.client.java.view.{ViewQuery, ViewRow}
 import com.couchbase.client.java.{Bucket, CouchbaseCluster}
-import helper.RollingFileWriter
+import helper.{ConfigHelper, RollingFileWriter}
 import io.userhabit.library.db.ElasticUtils
 import io.userhabit.library.orm.Mapper
 import io.userhabit.library._
@@ -42,10 +44,10 @@ object Main {
   var toDateTime: IndexedSeq[Integer] = IndexedSeq.empty
   var logger: BufferedWriter = null
   var exportDir = "./export"
-  var elasticNodeIp = "10.10.36.120"
 
   def main (args: Array[String]): Unit = {
     try {
+      ConfigHelper.load()
       loadConfig()
     } catch {
       case e: Exception =>
@@ -63,10 +65,12 @@ object Main {
     val file = new File(s"${dir.getCanonicalPath}/logging")
     logger = new BufferedWriter(new FileWriter(file))
 
+
 //    openCouchbase()
 //    couchbaseToFile()
-    fileToElasticSearch()
+//    fileToElasticSearch()
 //    closeCouchbase()
+    s3ToElasticSearch()
 
     logger.close()
   }
@@ -113,8 +117,6 @@ object Main {
       } else throw new Exception("couchbase option is required.")
 
       exportDir = data.getOrDefault("dir.export", "./export").toString
-
-      elasticNodeIp = data.getOrDefault("elastic.node.ip", elasticNodeIp).toString
     } catch {
       case e: FileNotFoundException => throw new Exception(s"${file.getCanonicalPath} : was not found.")
     }
@@ -270,7 +272,7 @@ object Main {
     bw.close()
 
     val key = s"$intAppId/$year/$month/$day/$hour"
-    val putResult = s3Client.putObject(new PutObjectRequest("userhabit-jake-test", key, file))
+    val putResult = s3Client.putObject(new PutObjectRequest(ConfigHelper.s3Bucket, key, file))
     println(putResult.getETag)
 
     // Remove file when S3 upload succeeds
@@ -393,14 +395,16 @@ object Main {
   }
 
   def s3ToElasticSearch() : Unit = {
+    // Read credentials from ./.aws/credentials
     val s3Client = new AmazonS3Client(new ProfileCredentialsProvider())
-    val listObjectsRequest = new ListObjectsRequest().withBucketName("userhabit-jake-test")
-    var objectListing : ObjectListing = new ObjectListing()
+    val listObjectsRequest = new ListObjectsRequest().withBucketName(ConfigHelper.s3Bucket)
+    listObjectsRequest.setPrefix("raw/502/")
+    var objectListing: ObjectListing = new ObjectListing()
 
-    val settings = Settings.settingsBuilder().build()
+    val esUtils = new ElasticUtils()
+    esUtils.connect(new InetSocketTransportAddress(InetAddress.getByName(ConfigHelper.elasticHost), 9300))
 
-    val client = TransportClient.builder().settings(settings).build()
-      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(elasticNodeIp), 9300))
+    val mapper = new Mapper()
 
     do {
       objectListing = s3Client.listObjects(listObjectsRequest)
@@ -409,7 +413,8 @@ object Main {
       println(objectSummaries.size())
       for (i <- 0 until objectSummaries.size()) {
         val key = objectSummaries.get(i).getKey
-        val s3Object = s3Client.getObject(new GetObjectRequest("userhabit-jake-test", key))
+        println(key)
+        val s3Object = s3Client.getObject(new GetObjectRequest(ConfigHelper.s3Bucket, key))
 
         val reader = new BufferedReader(new InputStreamReader(s3Object.getObjectContent))
         var byteOffset = 0
@@ -418,53 +423,27 @@ object Main {
           try {
             // displayTextInputStream(s3Object.getObjectContent)
             // val strJson = scala.io.Source.fromInputStream(s3Object.getObjectContent).mkString
-            val json = new JSONObject(sessionJson)
-            json.remove("appViewActivity")
-            json.remove("location")
-            json.remove("phoneNumber")
-            // json.remove("viewFlow")
 
-            val appId = json.getInt("appId")
-            val localTime = json.getLong("localTime")
-            val timestamp = new DateTime(localTime)
-
-            val indexName = s"uh-$appId-${timestamp.toString("yyyyMMdd")}"
-            val indexType = "session"
-
-            val file = new JSONObject()
-            file.put("name", key)
-            file.put("offset", byteOffset)
-            json.put("file", file)
+            val as = mapper.readValue(sessionJson, classOf[AnalyzedSession])
+            esUtils.addToBulkIndex(as)
 
             byteOffset = sessionJson.getBytes().length + newLine.getBytes().length
-
-            val isIndexExists = client.admin().indices().prepareExists(indexName).execute().actionGet().isExists
-            if (!isIndexExists) {
-              val res = client.admin().indices().prepareCreate(indexName).addMapping(indexType, getMapping(indexType)).execute().actionGet()
-              println(res.toString)
-            }
-
-            val response = client.prepareIndex(indexName, indexType)
-              .setSource(json.toString)
-              .get()
-            println(response)
           } catch {
             case e: JSONException => println(e.getMessage)
           }
           sessionJson = reader.readLine()
         }
       }
-
       listObjectsRequest.setMarker(objectListing.getNextMarker)
     } while (objectListing.isTruncated)
 
-    client.close()
+    esUtils.close()
   }
 
   def fileToElasticSearch(): Unit = {
 
     val esUtils = new ElasticUtils()
-    esUtils.connect(new InetSocketTransportAddress(InetAddress.getByName(elasticNodeIp), 9300))
+    esUtils.connect(new InetSocketTransportAddress(InetAddress.getByName(ConfigHelper.elasticHost), 9300))
 
     val d = new File(exportDir)
     if (d.exists() && d.isDirectory) {
