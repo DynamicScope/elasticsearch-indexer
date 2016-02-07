@@ -1,0 +1,39 @@
+userhabit = {
+  key = ""
+
+  app_ids = []
+  from_date = "20160101"
+  to_date = "20160101"
+
+  dir_export = "./export"
+}
+
+mysql = {
+  slick_driver = slick.driver.MySQLDriver
+  driver = com.mysql.jdbc.Driver
+
+  url = ""
+  url = ${?DATABASE_URI}
+
+  username = ""
+  username = ${?DATABASE_USERNAME}
+
+  password = ""
+  password = ${?DATABASE_PASSWORD}
+}
+
+couchbase = {
+  nodes = ["127.0.0.1"]
+  bucket = ""
+  bucket_password = ""
+  bulk_limit = "500"
+}
+
+elastic = {
+  host = "127.0.0.1"
+  cluster_name = ""
+}
+
+s3 = {
+  bucket = ""
+}

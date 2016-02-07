@@ -13,7 +13,7 @@ libraryDependencies += "org.elasticsearch" % "elasticsearch" % "2.0.0"
 // Couchbase Client
 libraryDependencies += "com.couchbase.client" % "java-client" % "2.1.5"
 
-// MySQL
+// MySQL - Instead using PostegreSql
 //libraryDependencies += "mysql" % "mysql-connector-java" % "5.1.34"
 //libraryDependencies += "com.typesafe.slick" %% "slick" % "3.1.1"
 //libraryDependencies += "com.typesafe.slick" %% "slick-codegen" % "3.1.1"
