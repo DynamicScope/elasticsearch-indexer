@@ -20,12 +20,10 @@ import io.userhabit.library.v2.model.analysis.{AnalyzedSession, S3Location}
 import io.userhabit.library.v2.tool.V1ToV2Migrator
 import org.elasticsearch.common.transport.InetSocketTransportAddress
 import org.elasticsearch.common.unit.ByteSizeUnit
-import org.elasticsearch.common.xcontent.{XContentBuilder, XContentFactory, XContentType}
-import org.joda.time.{Seconds, DateTime}
+import org.joda.time.{DateTime, Seconds}
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
-import scala.io.Source
 import scala.util.control.Breaks._
 
 /**

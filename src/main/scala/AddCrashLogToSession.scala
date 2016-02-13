@@ -1,4 +1,3 @@
-import io.userhabit.library.db.service.CrashServiceImpl
 import io.userhabit.library.v2.tool.V1ToV2Migrator.CrashSessionHandler
 
 /**
@@ -7,11 +6,12 @@ import io.userhabit.library.v2.tool.V1ToV2Migrator.CrashSessionHandler
 class AddCrashLogToSession extends CrashSessionHandler {
 
   override def processCrashSession(appId: Int, versionId: Int, key: String): String = {
-    val crashService = new CrashServiceImpl
-    val crash = crashService.findByUniqueId(key.getBytes)
-    if (crash != null)
-      crash.getStacktrace
-    else
-      "No Stacktrace"
+//    val crashService = new CrashServiceImpl
+//    val crash = crashService.findByUniqueId(key.getBytes)
+//    if (crash != null)
+//      crash.getStacktrace
+//    else
+//      "No Stacktrace"
+    ""
   }
 }
