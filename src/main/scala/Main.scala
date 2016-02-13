@@ -19,7 +19,7 @@ import io.userhabit.library.v1.model.Session
 import io.userhabit.library.v2.model.analysis.{AnalyzedSession, S3Location}
 import io.userhabit.library.v2.tool.V1ToV2Migrator
 import org.elasticsearch.common.transport.InetSocketTransportAddress
-import org.elasticsearch.common.unit.ByteSizeUnit
+import org.elasticsearch.common.unit.{TimeValue, ByteSizeValue, ByteSizeUnit}
 import org.joda.time.{DateTime, Seconds}
 
 import scala.collection.JavaConversions._
@@ -39,7 +39,7 @@ object Main {
   lazy val migrator = new V1ToV2Migrator
 
   lazy val s3 = new S3Utils(new ProfileCredentialsProvider().getCredentials, ConfigHelper.s3Bucket, "")
-  lazy val esUtils = new ElasticUtils()
+  var esUtils: ElasticUtils = null
 
   val s3KeyPrefix = "raw/"
 
@@ -58,6 +58,7 @@ object Main {
 
       // Initialize utils
       migrator.setCrashSessionHandler(new AddCrashLogToSession)
+      esUtils = new ElasticUtils(ConfigHelper.esBulkActions, new ByteSizeValue(10, ByteSizeUnit.MB), TimeValue.timeValueSeconds(10), 1)
       esUtils.connect(new InetSocketTransportAddress(InetAddress.getByName(ConfigHelper.elasticHost), 9300))
 
       openCouchbase()

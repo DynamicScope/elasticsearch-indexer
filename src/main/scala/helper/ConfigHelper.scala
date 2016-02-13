@@ -1,7 +1,5 @@
 package helper
 
-import java.nio.file.{Files, Paths}
-
 import com.typesafe.config.ConfigFactory
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
@@ -24,6 +22,8 @@ object ConfigHelper {
   var cbBulkLimit = 500
 
   var elasticHost: String = ""
+  var esBulkActions = 100
+
   var s3Bucket: String = ""
 
   def load(): Unit = {
@@ -44,6 +44,8 @@ object ConfigHelper {
       cbBulkLimit = config.getInt("couchbase.bulk_limit")
 
       elasticHost = config.getString("elastic.host")
+      esBulkActions = config.getInt("elastic.bulk_actions")
+
       s3Bucket = config.getString("s3.bucket")
     } catch {
       case e: Exception =>
