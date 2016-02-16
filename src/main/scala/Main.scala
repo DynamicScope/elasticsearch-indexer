@@ -96,10 +96,9 @@ object Main {
 
     val fromDate = ConfigHelper.fromDate.minusHours(9)
     val toDate = ConfigHelper.toDate.minusHours(9)
-
-    var totalSessionsPerApp = 0
-
+    
     appList.foreach(appId => {
+      var totalSessionsPerApp = 0
       val startTime = DateTime.now()
       logger.write(s"[INFO] Processing appId: $appId")
       logger.newLine()
