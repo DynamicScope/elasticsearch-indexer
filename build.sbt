@@ -22,7 +22,12 @@ libraryDependencies += "com.couchbase.client" % "java-client" % "2.1.5"
 
 // Userhabit Library
 libraryDependencies += "io.userhabit.library" % "userhabitlib" % "1.0.0-SNAPSHOT"
-credentials += Credentials("Sonatype Nexus Repository Manager", "team.andbut.com", "deployment", "JPw}eb4)7fdR2kgB")
+credentials += Credentials({
+  if (sys.env.isDefinedAt("ANDBUT_PRIVATE_REPO")) {
+    new File(sys.env.getOrElse("ANDBUT_PRIVATE_REPO", ""))
+  } else {
+    Path.userHome / ".ivy2" / ".andbutrepo"
+  }})
 resolvers += "Sonatype Nexus Repository Manager" at "https://team.andbut.com/repo/content/repositories/snapshots/"
 
 // Hibernate integration with PostgreSql
