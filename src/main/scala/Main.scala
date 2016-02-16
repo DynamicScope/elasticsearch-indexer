@@ -94,8 +94,8 @@ object Main {
     logger.write(s"[INFO] Processing following appIds: ${appList.toString}")
     logger.newLine()
 
-    val fromDate = ConfigHelper.fromDate
-    val toDate = ConfigHelper.toDate
+    val fromDate = ConfigHelper.fromDate.minusHours(9)
+    val toDate = ConfigHelper.toDate.minusHours(9)
 
     var totalSessionsPerApp = 0
 
@@ -119,7 +119,7 @@ object Main {
 
           if (totalSessions > 0) {
             totalSessionsPerApp += totalSessions
-            val rfw = new RollingFileWriter(s"$appId-${workingDate.toString("YYYYMMdd")}", ByteSizeUnit.GB.toBytes(5), ConfigHelper.dirExport)
+            val rfw = new RollingFileWriter(s"$appId-${workingDate.plusHours(9).toString("YYYYMMdd")}", ByteSizeUnit.GB.toBytes(5), ConfigHelper.dirExport)
             processData(appId, workingDate, totalSessions, rfw)
             rfw.close()
             uploadToS3(rfw)
