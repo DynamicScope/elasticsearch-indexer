@@ -11,6 +11,7 @@ import org.elasticsearch.common.unit.TimeValue
   * Created by DynamicScope on 2016. 2. 22..
   */
 object EsReIndexer {
+  ConfigHelper.load()
 
   val es = new ElasticUtils
   es.connect(new InetSocketTransportAddress(InetAddress.getByName(ConfigHelper.elasticHost), 9300))
