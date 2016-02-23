@@ -168,7 +168,7 @@ object Main {
             as.setS3Location(new S3Location(s3Key, offsetStart, offsetEnd))
             as.setAnalyzedType(AnalyzedSession.FULL_ANALYZED)
 
-            esUtils.addToBulkIndex(as)
+            esUtils.bulkIndexAfterBatch(as, 540)
 
             println(as.getSessionInfo.getId)
           })
@@ -505,7 +505,7 @@ object Main {
             // val strJson = scala.io.Source.fromInputStream(s3Object.getObjectContent).mkString
 
             val as = mapper.readValue(sessionJson, classOf[AnalyzedSession])
-            esUtils.addToBulkIndex(as, ElasticUtils.INDEX_TYPE_SESSION)
+            esUtils.bulkIndexAfterBatch(as, 540)
 
             byteOffset = sessionJson.getBytes().length + newLine.getBytes().length
           } catch {
