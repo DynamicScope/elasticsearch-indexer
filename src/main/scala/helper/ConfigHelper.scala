@@ -23,6 +23,7 @@ object ConfigHelper {
 
   var elasticHost: String = ""
   var esBulkActions = 100
+  var esBulkConcurrentRequest = 1
 
   var s3Bucket: String = ""
 
@@ -45,6 +46,7 @@ object ConfigHelper {
 
       elasticHost = config.getString("elastic.host")
       esBulkActions = config.getInt("elastic.bulk_actions")
+      esBulkConcurrentRequest = config.getInt("elastic.bulk_concurrent_request")
 
       s3Bucket = config.getString("s3.bucket")
     } catch {

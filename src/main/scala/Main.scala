@@ -58,7 +58,7 @@ object Main {
 
       // Initialize utils
       migrator.setCrashSessionHandler(new AddCrashLogToSession)
-      esUtils = new ElasticUtils(ConfigHelper.esBulkActions, new ByteSizeValue(10, ByteSizeUnit.MB), TimeValue.timeValueSeconds(10), 1)
+      esUtils = new ElasticUtils(ConfigHelper.esBulkActions, new ByteSizeValue(10, ByteSizeUnit.MB), TimeValue.timeValueSeconds(10), ConfigHelper.esBulkConcurrentRequest)
       esUtils.connect(new InetSocketTransportAddress(InetAddress.getByName(ConfigHelper.elasticHost), 9300))
 
       openCouchbase()
