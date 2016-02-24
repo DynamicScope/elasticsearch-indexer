@@ -96,15 +96,17 @@ object Main {
 
     val fromDate = ConfigHelper.fromDate.minusHours(9)
     val toDate = ConfigHelper.toDate.minusHours(9)
-    
-    appList.foreach(appId => {
+
+    var workingDate = toDate
+    while (workingDate.getMillis >= fromDate.getMillis) {
+
+      logger.write(s"[INFO] Processing date: $workingDate")
+      logger.newLine()
+
       var totalSessionsPerApp = 0
       val startTime = DateTime.now()
-      logger.write(s"[INFO] Processing appId: $appId")
-      logger.newLine()
-      var workingDate = toDate
-      while (workingDate.getMillis >= fromDate.getMillis) {
 
+      appList.foreach(appId => {
         val totalSessionsResponse = couchbaseBucket.query(ViewQuery.from("admin", "daily_session_count")
           .startKey(JsonArray.fromJson(s"[$appId,${workingDate.getMillis}]"))
           .endKey(JsonArray.fromJson(s"[$appId,${workingDate.plusDays(1).getMillis}]"))
@@ -124,20 +126,19 @@ object Main {
             uploadToS3(rfw)
           }
         }
-
-        workingDate = workingDate.minusDays(1)
-      }
+      })
 
       logger.write(s"[INFO] Total sessions: $totalSessionsPerApp")
       logger.newLine()
 
       val endTime = DateTime.now()
       val seconds = Seconds.secondsBetween(startTime, endTime)
-      logger.write(s"------------------ AppId($appId) Job took ${seconds.getSeconds} seconds ------------------")
+      logger.write(s"------------------ Date($workingDate) Job took ${seconds.getSeconds} seconds ------------------")
+      logger.newLine()
       logger.newLine()
 
-      logger.newLine()
-    })
+      workingDate = workingDate.minusDays(1)
+    }
   }
 
   private def processData(appId: Integer, workingDate: DateTime, totalSessions: Int, rfw: RollingFileWriter): Unit = {
