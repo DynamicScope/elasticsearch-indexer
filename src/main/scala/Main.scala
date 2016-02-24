@@ -170,8 +170,6 @@ object Main {
             as.setAnalyzedType(AnalyzedSession.FULL_ANALYZED)
 
             esUtils.bulkIndexAfterBatch(as, 540)
-
-            println(as.getSessionInfo.getId)
           })
         }
       } catch {
