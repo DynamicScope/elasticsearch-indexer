@@ -61,8 +61,10 @@ object Main {
       esUtils = new ElasticUtils(ConfigHelper.esBulkActions, new ByteSizeValue(10, ByteSizeUnit.MB), TimeValue.timeValueSeconds(10), ConfigHelper.esBulkConcurrentRequest)
       esUtils.connect(new InetSocketTransportAddress(InetAddress.getByName(ConfigHelper.elasticHost), 9300))
 
+      val after = if (args.length > 0) args(0).toBoolean else true
+
       openCouchbase()
-      migrateFromCouchbase()
+      migrateFromCouchbase(after)
       closeCouchbase()
 
     } catch {
@@ -83,7 +85,7 @@ object Main {
     couchbaseCluster.disconnect()
   }
 
-  def migrateFromCouchbase(): Unit = {
+  def migrateFromCouchbase(after: Boolean): Unit = {
 
     if (couchbaseBucket == null) return
 
@@ -120,10 +122,14 @@ object Main {
 
           if (totalSessions > 0) {
             totalSessionsPerApp += totalSessions
-            val rfw = new RollingFileWriter(s"$appId-${workingDate.plusHours(9).toString("YYYYMMdd")}", ByteSizeUnit.GB.toBytes(5), ConfigHelper.dirExport)
-            processData(appId, workingDate, totalSessions, rfw)
-            rfw.close()
-            uploadToS3(rfw)
+            if (after) {
+              val rfw = new RollingFileWriter(s"$appId-${workingDate.plusHours(9).toString("YYYYMMdd")}", ByteSizeUnit.GB.toBytes(5), ConfigHelper.dirExport)
+              processData(appId, workingDate, totalSessions, rfw)
+              rfw.close()
+              uploadToS3(rfw)
+            } else {
+              processData(appId, workingDate, totalSessions)
+            }
           }
         }
       })
@@ -138,6 +144,47 @@ object Main {
       logger.newLine()
 
       workingDate = workingDate.minusDays(1)
+    }
+  }
+
+  private def processData(appId: Integer, workingDate: DateTime, totalSessions: Int): Unit = {
+    val limit = ConfigHelper.cbBulkLimit
+
+    def queryDocs(skip: Int, timeout: Long): Unit = {
+      if (timeout >= 5) return
+      try {
+        val cbQueryResponse = couchbaseBucket.query(ViewQuery.from("admin", "daily_session_count")
+          .startKey(JsonArray.fromJson(s"[$appId,${workingDate.getMillis}]"))
+          .endKey(JsonArray.fromJson(s"[$appId,${workingDate.plusDays(1).getMillis}]"))
+          .skip(skip)
+          .limit(limit)
+          .reduce(false), timeout, TimeUnit.MINUTES)
+
+        if (cbQueryResponse.success()) {
+          cbQueryResponse.foreach(viewRow => {
+            val v1Session = mapper.readValue(viewRow.document().content().toString, classOf[Session])
+            val v2Session = migrator.migrateToV2Session(v1Session)
+            val as = new AnalyzedSession(v2Session)
+
+            esUtils.bulkIndexBeforeBatch(as)
+          })
+        }
+      } catch {
+        case te: TimeoutException =>
+          logger.write(s"[WARN] queryDocs: Increasing timeout to $timeout")
+          logger.newLine()
+          queryDocs(skip, timeout + 1)
+        case e: Exception =>
+          e.printStackTrace()
+          logger.write(s"[Error] appId: $appId, workingDate: ${workingDate.toString}, timeout: $timeout")
+          logger.newLine()
+      }
+    }
+
+    var skip = 0
+    while (skip < totalSessions) {
+      queryDocs(skip, 1)
+      skip += limit
     }
   }
 
@@ -160,16 +207,16 @@ object Main {
             val v2Session = migrator.migrateToV2Session(v1Session)
             val as = new AnalyzedSession(v2Session)
 
-            val offsetStart = rfw.getFileSize
+//            val offsetStart = rfw.getFileSize
             rfw.writeAnalyzedSessionWithMPack(as)
-            val offsetEnd = rfw.getFileSize - 1
+//            val offsetEnd = rfw.getFileSize - 1
 
-            as.removeActionFlows()
-            val s3Key = getS3Key(rfw.getCurrentFile.getName)
-            as.setS3Location(new S3Location(s3Key, offsetStart, offsetEnd))
-            as.setAnalyzedType(AnalyzedSession.FULL_ANALYZED)
+//            as.removeActionFlows()
+//            val s3Key = getS3Key(rfw.getCurrentFile.getName)
+//            as.setS3Location(new S3Location(s3Key, offsetStart, offsetEnd))
+//            as.setAnalyzedType(AnalyzedSession.FULL_ANALYZED)
 
-            esUtils.bulkIndexAfterBatch(as, 540)
+//            esUtils.bulkIndexAfterBatch(as, 540)
           })
         }
       } catch {
