@@ -4,22 +4,19 @@ import java.nio.file.Files
 import java.util.concurrent.{TimeUnit, TimeoutException}
 
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
-import com.amazonaws.services.s3.AmazonS3Client
-import com.amazonaws.services.s3.model.{GetObjectRequest, ListObjectsRequest, ObjectListing}
-import com.amazonaws.util.json.JSONException
 import com.couchbase.client.java.document.json.JsonArray
 import com.couchbase.client.java.view.ViewQuery
 import com.couchbase.client.java.{Bucket, CouchbaseCluster}
 import helper.ConfigHelper
 import io.userhabit.library.db.ElasticUtils
 import io.userhabit.library.io.RollingFileWriter
-import io.userhabit.library.orm.Mapper
+import io.userhabit.library.orm.{MPackMapper, Mapper}
 import io.userhabit.library.util.S3Utils
 import io.userhabit.library.v1.model.Session
 import io.userhabit.library.v2.model.analysis.{AnalyzedSession, S3Location}
 import io.userhabit.library.v2.tool.V1ToV2Migrator
 import org.elasticsearch.common.transport.InetSocketTransportAddress
-import org.elasticsearch.common.unit.{TimeValue, ByteSizeValue, ByteSizeUnit}
+import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue, TimeValue}
 import org.joda.time.{DateTime, Seconds}
 
 import scala.collection.JavaConversions._
@@ -61,11 +58,12 @@ object Main {
       esUtils = new ElasticUtils(ConfigHelper.esBulkActions, new ByteSizeValue(10, ByteSizeUnit.MB), TimeValue.timeValueSeconds(10), ConfigHelper.esBulkConcurrentRequest)
       esUtils.connect(new InetSocketTransportAddress(InetAddress.getByName(ConfigHelper.elasticHost), 9300))
 
-      val after = if (args.length > 0) args(0).toBoolean else true
+//      val after = if (args.length > 0) args(0).toBoolean else true
+//      openCouchbase()
+//      migrateFromCouchbase(after)
+//      closeCouchbase()
 
-      openCouchbase()
-      migrateFromCouchbase(after)
-      closeCouchbase()
+      s3ToElasticSearch()
 
     } catch {
       case e: Exception =>
@@ -278,68 +276,6 @@ object Main {
     }
   }
 
-//  def couchbaseToS3() : Unit = {
-//    var fDateTime = ConfigHelper.fromDate
-//    val tDateTime = ConfigHelper.toDate
-//
-//    val s3Client = new AmazonS3Client(new ProfileCredentialsProvider())
-//
-//    val esSettings = Settings.settingsBuilder().build()
-//    val esClient = TransportClient.builder().settings(esSettings).build()
-//      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("172.31.1.101"), 9300))
-//
-//    if (appList.isEmpty) {
-//      appList = getAppListFromCouchbase
-//    }
-//
-//    appList.foreach(intAppId => {
-//
-//      println(s"----------${intAppId.toString}----------")
-//
-//      val fromDateResponse = couchbaseBucket.query(ViewQuery.from("admin", "daily_session_count")
-//        .startKey(JsonArray.fromJson(s"[$intAppId]"))
-//        .endKey(JsonArray.fromJson(s"[${intAppId+1}]"))
-//        .reduce(false))
-//      val fromDateResponseItrRows = fromDateResponse.rows()
-//
-//      if (fromDateResponse.success()) {
-//        if (fromDateResponseItrRows.hasNext) {
-//          val fromDateViewRow = fromDateResponseItrRows.next()
-//          if (fromDateViewRow != null) {
-//            val fromDateMillis = fromDateViewRow.key().asInstanceOf[JsonArray].get(1).toString.toLong
-//            fDateTime = new DateTime(fromDateMillis).withHourOfDay(0).withMinuteOfHour(0)
-//          }
-//
-//          println(s"fromDateTime: $fDateTime")
-//          var eDate = tDateTime
-//
-//          while (eDate.getMillis > fDateTime.getMillis) {
-//            val sDate = eDate.minusHours(1)
-//
-//            val startKey = JsonArray.fromJson(s"[$intAppId,${sDate.getMillis}]")
-//            val endKey = JsonArray.fromJson(s"[$intAppId,${eDate.getMillis}]")
-//
-//            val totalSessionsResult = couchbaseBucket.query(ViewQuery.from("admin", "daily_session_count").startKey(startKey).endKey(endKey).reduce(true))
-//            if (totalSessionsResult.success()) {
-//              var totalSessions = 0
-//              totalSessionsResult.foreach(r => {
-//                if (totalSessions == 0) totalSessions = r.value().toString.toInt
-//              })
-//
-//              if (totalSessions > 0) {
-//                //toS3(s3Client, intAppId, sDate, startKey, endKey, totalSessions)
-//                migrateToElasticSearch(esClient, intAppId, sDate, startKey, endKey, totalSessions)
-//              }
-//            }
-//            eDate = sDate
-//          }
-//        }
-//      }
-//    })
-//
-//    esClient.close()
-//  }
-
 //  def migrateToElasticSearch(client: TransportClient, intAppId: Integer, sDate: DateTime, startKey: JsonArray, endKey: JsonArray, totalSessions: Int): Unit = {
 //    val limit = couchbaseBulkLimit
 //    var skip = 0
@@ -521,49 +457,50 @@ object Main {
 //  }
 
   def s3ToElasticSearch() : Unit = {
-    // Read credentials from ./.aws/credentials
-    val s3Client = new AmazonS3Client(new ProfileCredentialsProvider())
-    val listObjectsRequest = new ListObjectsRequest().withBucketName(ConfigHelper.s3Bucket)
-    listObjectsRequest.setPrefix("raw/502/")
-    var objectListing: ObjectListing = new ObjectListing()
+    val appList = ConfigHelper.appIds
+    val fromDate = ConfigHelper.fromDate
+    val toDate = ConfigHelper.toDate
+    val mPackMapper = new MPackMapper()
+    val reader = mPackMapper.reader(classOf[AnalyzedSession])
 
-    val esUtils = new ElasticUtils()
-    esUtils.connect(new InetSocketTransportAddress(InetAddress.getByName(ConfigHelper.elasticHost), 9300))
-
-    val mapper = new Mapper()
-
-    do {
-      objectListing = s3Client.listObjects(listObjectsRequest)
-      val objectSummaries = objectListing.getObjectSummaries
-      val newLine = "\n"
-      println(objectSummaries.size())
-      for (i <- 0 until objectSummaries.size()) {
-        val key = objectSummaries.get(i).getKey
-        println(key)
-        val s3Object = s3Client.getObject(new GetObjectRequest(ConfigHelper.s3Bucket, key))
-
-        val reader = new BufferedReader(new InputStreamReader(s3Object.getObjectContent))
-        var byteOffset = 0
-        var sessionJson = reader.readLine()
-        while (sessionJson != null) {
+    var workingDate = toDate
+    while (workingDate.getMillis >= fromDate.getMillis) {
+      val year = workingDate.toString("YYYY")
+      val month = workingDate.toString("MM")
+      val day = workingDate.toString("dd")
+      appList.foreach(appId => {
+        val rfw = new RollingFileWriter(s"$appId-${workingDate.toString("YYYYMMdd")}", ByteSizeUnit.GB.toBytes(5), ConfigHelper.dirExport)
+        val keyPattern = s"raw/$appId/$year/$month/$day"
+        val list = s3.list(keyPattern)
+        list.foreach(obj => {
+          val key = obj.getKey
           try {
-            // displayTextInputStream(s3Object.getObjectContent)
-            // val strJson = scala.io.Source.fromInputStream(s3Object.getObjectContent).mkString
+            reader.readValues[AnalyzedSession](s3.load(key)).foreach(as => {
+              val offsetStart = rfw.getFileSize
+              rfw.writeAnalyzedSessionWithMPack(as)
+              val offsetEnd = rfw.getFileSize - 1
 
-            val as = mapper.readValue(sessionJson, classOf[AnalyzedSession])
-            esUtils.bulkIndexAfterBatch(as, 540)
+              as.removeActionFlows()
+              val s3Key = getS3Key(rfw.getCurrentFile.getName)
+              as.setS3Location(new S3Location(s3Key, offsetStart, offsetEnd))
+              as.setAnalyzedType(AnalyzedSession.FULL_ANALYZED)
 
-            byteOffset = sessionJson.getBytes().length + newLine.getBytes().length
+              esUtils.bulkIndexAfterBatch(as, 540)
+            })
           } catch {
-            case e: JSONException => println(e.getMessage)
+            case e: Exception =>
+              println(e.getMessage)
+              logger.write(keyPattern)
+              logger.newLine()
+              logger.write(e.getMessage)
           }
-          sessionJson = reader.readLine()
-        }
-      }
-      listObjectsRequest.setMarker(objectListing.getNextMarker)
-    } while (objectListing.isTruncated)
-
-    esUtils.close()
+        })
+        esUtils.flushBulkProcessor()
+        rfw.close()
+        if (list.nonEmpty) uploadToS3(rfw)
+      })
+      workingDate = workingDate.minusDays(1)
+    }
   }
 
 //  def fileToElasticSearch(): Unit = {
