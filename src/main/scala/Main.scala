@@ -487,6 +487,7 @@ object Main {
 
               esUtils.bulkIndexAfterBatch(as, 540)
             })
+            s3.delete(key)
           } catch {
             case e: Exception =>
               println(e.getMessage)
