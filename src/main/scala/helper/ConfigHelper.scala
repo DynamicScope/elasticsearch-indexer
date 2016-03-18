@@ -16,6 +16,9 @@ object ConfigHelper {
   var toDate = DateTime.now()
   var dirExport = "./export"
 
+  var slackWebHook: String = ""
+  var slackChannel: String = ""
+
   var cbNodes = "127.0.0.1"
   var cbBucket = ""
   var cbBucketPassword = ""
@@ -38,6 +41,9 @@ object ConfigHelper {
       toDate = formatter.parseDateTime(config.getString("userhabit.to_date"))
 
       dirExport = config.getString("userhabit.dir_export")
+
+      slackWebHook = config.getString("userhabit.slack")
+      slackChannel = config.getString("userhabit.slack_channel")
 
       cbNodes = config.getStringList("couchbase.nodes").toList.mkString(",")
       cbBucket = config.getString("couchbase.bucket")

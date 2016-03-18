@@ -11,6 +11,7 @@ import helper.ConfigHelper
 import io.userhabit.library.db.ElasticUtils
 import io.userhabit.library.io.RollingFileWriter
 import io.userhabit.library.orm.{MPackMapper, Mapper}
+import io.userhabit.library.slack.{SlackApi, SlackMessage}
 import io.userhabit.library.util.S3Utils
 import io.userhabit.library.v1.model.Session
 import io.userhabit.library.v2.model.analysis.{AnalyzedSession, S3Location}
@@ -460,8 +461,12 @@ object Main {
     val appList = ConfigHelper.appIds
     val fromDate = ConfigHelper.fromDate
     val toDate = ConfigHelper.toDate
+
     val mPackMapper = new MPackMapper()
     val reader = mPackMapper.reader(classOf[AnalyzedSession])
+
+    val slack = new SlackApi(ConfigHelper.slackWebHook)
+    val slackChannel = ConfigHelper.slackChannel
 
     var workingDate = toDate
     while (workingDate.getMillis >= fromDate.getMillis) {
@@ -507,6 +512,7 @@ object Main {
           }
         }
       })
+      slack.call(new SlackMessage(slackChannel, "elasticsearch-indexer", s"Finished workingDate: $workingDate"))
       workingDate = workingDate.minusDays(1)
     }
   }

@@ -6,6 +6,9 @@ userhabit = {
   to_date = "20160101"
 
   dir_export = "./export"
+
+  slack = ""
+  slack_channel = ""
 }
 
 mysql = {
